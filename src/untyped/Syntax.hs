@@ -40,7 +40,7 @@ printtm t = case t of
 pickfreshname :: String -> State Context String
 pickfreshname x = state $ \ctx -> case lookup x ctx of
         Just _ -> pickfreshname (x ++ "'") `runState` ctx
-        Nothing -> (x, ctx ++ [(x, NameBind)])
+        Nothing -> (x, (x, NameBind) : ctx)
 
 index2name :: Context -> Int -> String
 index2name ctx x = fst (ctx !! x)

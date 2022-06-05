@@ -4,7 +4,6 @@ module Parser where
 
 import Syntax
 
-import Control.Applicative (Alternative (many, (<|>)))
 import Control.Monad.Combinators.Expr (
         Operator (InfixL, Postfix, Prefix),
         makeExprParser,
@@ -13,7 +12,7 @@ import Control.Monad.State
 import Data.List (elemIndex)
 import Data.Text (Text, pack)
 import Data.Void (Void)
-import Text.Megaparsec hiding (many)
+import Text.Megaparsec
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 
@@ -33,13 +32,13 @@ symbol :: Text -> Parser Text
 symbol = L.symbol sc
 
 pIdent :: Parser String
-pIdent = (:) <$> lexeme letterChar <*> many alphaNumChar <?> "`identifier`"
+pIdent = (:) <$> letterChar <*> many alphaNumChar <?> "`identifier`"
 
 parens :: Parser a -> Parser a
 parens = between (symbol "(") (symbol ")")
 
 pTerm :: Parser Term
-pTerm = lexeme (pTmAbs <|> pTmVar <|> makeExprParser pTerm [[assocl "" TmApp]])
+pTerm = makeExprParser (lexeme pTmAbs <|> try (parens pTerm) <|> pTmVar) [[assocl " " TmApp]]
     where
         assocl :: Text -> (Term -> Term -> Term) -> Operator Parser Term
         assocl name f = InfixL (f <$ symbol name)
@@ -47,7 +46,7 @@ pTerm = lexeme (pTmAbs <|> pTmVar <|> makeExprParser pTerm [[assocl "" TmApp]])
 pTmAbs :: Parser Term
 pTmAbs = do
         _ <- symbol "\\"
-        x <- pIdent
+        x <- lexeme pIdent
         _ <- symbol "."
         ctx <- get
         ctx' <- gets (execState (pickfreshname x))
@@ -66,7 +65,7 @@ pTmVar = do
 getVarIndex :: String -> Context -> Int
 getVarIndex var ctx = case elemIndex var (map fst ctx) of
         Just i -> i
-        Nothing -> error "Unbound variable name"
+        Nothing -> error $ "Unbound variable name: '" ++ var ++ "'"
 
 parseTerm :: String -> Either (ParseErrorBundle Text Void) Term
 parseTerm input = parse ((pTerm `evalStateT` []) <* eof) "" (pack input)
