@@ -27,4 +27,4 @@ repl = runInputT defaultSettings loop
 process :: String -> IO ()
 process inp = case parseTerm inp of
         Left err -> putStrLn $ prettyError err
-        Right trm -> print trm --print $ eval [] trm
+        Right trm -> print $ eval [] trm

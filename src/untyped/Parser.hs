@@ -35,10 +35,10 @@ pIdent :: Parser String
 pIdent = (:) <$> letterChar <*> many alphaNumChar <?> "`identifier`"
 
 parens :: Parser a -> Parser a
-parens = between (symbol "(") (symbol ")")
+parens = between (char '(') (char ')')
 
 pTerm :: Parser Term
-pTerm = makeExprParser (lexeme pTmAbs <|> try (parens pTerm) <|> pTmVar) [[assocl " " TmApp]]
+pTerm = makeExprParser (lexeme pTmAbs <|> parens pTerm <|> pTmVar) [[assocl " " TmApp]]
     where
         assocl :: Text -> (Term -> Term -> Term) -> Operator Parser Term
         assocl name f = InfixL (f <$ symbol name)
