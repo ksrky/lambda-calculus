@@ -44,11 +44,11 @@ pTerm :: Parser Term
 pTerm =
         makeExprParser
                 ( choice
-                        [ try (lexeme pTmAbs)
+                        [ try pTmTApp
+                        , try (lexeme pTmAbs)
                         , lexeme pTmTAbs
                         , parens pTerm
-                        , {-, pTmTApp-}
-                          pTmVar
+                        , pTmVar
                         ]
                 )
                 [[assocl " " TmApp]]
@@ -118,7 +118,7 @@ pTmTAbs = do
         return $ TmTAbs x' t1
 
 pTmTApp :: Parser Term
-pTmTApp = TmTApp <$> pTerm <*> between (symbol "[") (string "]") pTy
+pTmTApp = TmTApp <$> lexeme (parens pTerm) <*> between (symbol "[") (string "]") pTy
 
 parseTerm :: String -> Either (ParseErrorBundle Text Void) Term
 parseTerm input = parse ((pTerm `evalStateT` []) <* eof) "" (pack input)
