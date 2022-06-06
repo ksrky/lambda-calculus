@@ -38,17 +38,17 @@ pTyIdent :: Parser String
 pTyIdent = (:) <$> upperChar <*> many alphaNumChar <?> "`identifier`"
 
 parens :: Parser a -> Parser a
-parens = between (string "(") (string ")")
+parens = between (symbol "(") (string ")")
 
 pTerm :: Parser Term
 pTerm =
         makeExprParser
                 ( choice
-                        [ lexeme pTmAbs
+                        [ try (lexeme pTmAbs)
                         , lexeme pTmTAbs
                         , parens pTerm
-                        , pTmTApp
-                        , pTmVar
+                        , {-, pTmTApp-}
+                          pTmVar
                         ]
                 )
                 [[assocl " " TmApp]]
@@ -62,7 +62,7 @@ pTmAbs = do
         _ <- symbol "\\"
         x <- lexeme pTmIdent
         _ <- symbol ":"
-        ty <- pTy
+        ty <- lexeme pTy
         _ <- symbol "."
         ctx <- get
         x' <- pickfreshname x
@@ -83,7 +83,7 @@ getVarIndex var ctx = case elemIndex var (map fst ctx) of
         Nothing -> error $ "Unbound variable name: '" ++ var ++ "'"
 
 pTy :: Parser Ty
-pTy = makeExprParser (choice [pTyAll, pTySome, pTyVar]) [[assocr "->" TyArr]] <?> "`type`"
+pTy = makeExprParser (choice [pTyAll, lexeme pTyVar]) [[assocr "->" TyArr]] <?> "`type`"
     where
         assocr :: Text -> (Ty -> Ty -> Ty) -> Operator Parser Ty
         assocr name f = InfixL (f <$ symbol name)
@@ -96,10 +96,15 @@ pTyVar = do
         return $ TyVar idx (length ctx)
 
 pTyAll :: Parser Ty
-pTyAll = TyAll <$> (symbol "forall" *> pTyIdent) <*> pTy
-
-pTySome :: Parser Ty
-pTySome = TySome <$> (symbol "exists" *> pTyIdent) <*> pTy
+pTyAll = do
+        _ <- symbol "forall"
+        x <- lexeme pTyIdent
+        _ <- symbol "."
+        ctx <- get
+        x' <- pickfreshname x
+        ty <- lexeme pTy
+        put ctx
+        return $ TyAll x' ty
 
 pTmTAbs :: Parser Term
 pTmTAbs = do
@@ -107,14 +112,13 @@ pTmTAbs = do
         x <- lexeme pTyIdent
         _ <- symbol "."
         ctx <- get
-        ctx' <- gets (execState (pickfreshname x))
-        put ctx'
+        x' <- pickfreshname x
         t1 <- pTerm
         put ctx
-        return $ TmTAbs x t1
+        return $ TmTAbs x' t1
 
 pTmTApp :: Parser Term
-pTmTApp = TmTApp <$> (pTerm <* symbol " ") <*> pTy
+pTmTApp = TmTApp <$> pTerm <*> between (symbol "[") (string "]") pTy
 
 parseTerm :: String -> Either (ParseErrorBundle Text Void) Term
 parseTerm input = parse ((pTerm `evalStateT` []) <* eof) "" (pack input)

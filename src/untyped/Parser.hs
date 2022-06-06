@@ -2,18 +2,37 @@
 
 module Parser where
 
-import Syntax
+import Syntax (Context, Term (..), pickfreshname)
 
 import Control.Monad.Combinators.Expr (
         Operator (InfixL, Postfix, Prefix),
         makeExprParser,
  )
-import Control.Monad.State
+import Control.Monad.State (
+        MonadState (get, put),
+        StateT,
+        evalStateT,
+ )
 import Data.List (elemIndex)
 import Data.Text (Text, pack)
 import Data.Void (Void)
-import Text.Megaparsec
-import Text.Megaparsec.Char
+import Text.Megaparsec (
+        MonadParsec (eof),
+        ParseErrorBundle,
+        Parsec,
+        between,
+        errorBundlePretty,
+        many,
+        parse,
+        (<?>),
+        (<|>),
+ )
+import Text.Megaparsec.Char (
+        alphaNumChar,
+        letterChar,
+        space1,
+        string,
+ )
 import qualified Text.Megaparsec.Char.Lexer as L
 
 type Parser = StateT Context (Parsec Void Text)
@@ -35,10 +54,10 @@ pIdent :: Parser String
 pIdent = (:) <$> letterChar <*> many alphaNumChar <?> "`identifier`"
 
 parens :: Parser a -> Parser a
-parens = between (char '(') (char ')')
+parens = between (symbol "(") (string ")")
 
 pTerm :: Parser Term
-pTerm = makeExprParser (lexeme pTmAbs <|> parens pTerm <|> pTmVar) [[assocl " " TmApp]] <?> "`term`"
+pTerm = makeExprParser (pTmAbs <|> parens (lexeme pTerm) <|> pTmVar) [[assocl " " TmApp]] <?> "`term`"
     where
         assocl :: Text -> (Term -> Term -> Term) -> Operator Parser Term
         assocl name f = InfixL (f <$ symbol name)
@@ -49,8 +68,7 @@ pTmAbs = do
         x <- lexeme pIdent
         _ <- symbol "."
         ctx <- get
-        ctx' <- gets (execState (pickfreshname x))
-        put ctx'
+        x' <- pickfreshname x
         t1 <- pTerm
         put ctx
         return $ TmAbs x t1
@@ -68,7 +86,7 @@ getVarIndex var ctx = case elemIndex var (map fst ctx) of
         Nothing -> error $ "Unbound variable name: '" ++ var ++ "'"
 
 parseTerm :: String -> Either (ParseErrorBundle Text Void) Term
-parseTerm input = parse ((pTerm `evalStateT` []) <* eof) "" (pack input)
+parseTerm input = parse ((lexeme pTerm `evalStateT` []) <* eof) "" (pack input)
 
 prettyError :: ParseErrorBundle Text Void -> String
 prettyError = errorBundlePretty

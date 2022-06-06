@@ -7,6 +7,7 @@ import Control.Monad.Identity (Identity)
 import Control.Monad.State (
         MonadState (get, state),
         State,
+        StateT,
         runState,
  )
 
@@ -37,7 +38,7 @@ printtm t = case t of
                                 then index2name ctx x
                                 else "[bad index]"
 
-pickfreshname :: String -> State Context String
+pickfreshname :: Monad m => String -> StateT Context m String
 pickfreshname x = state $ \ctx -> case lookup x ctx of
         Just _ -> pickfreshname (x ++ "'") `runState` ctx
         Nothing -> (x, (x, NameBind) : ctx)

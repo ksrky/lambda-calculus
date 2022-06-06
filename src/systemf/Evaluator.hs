@@ -4,7 +4,7 @@ import Syntax (
         Binding (TyVarBind, VarBind),
         Context,
         Term (..),
-        Ty (TyAll, TyArr, TySome),
+        Ty (TyAll, TyArr),
         addbinding,
         getTypeFromContext,
         termShift,
@@ -37,13 +37,13 @@ eval1 t = case t of
         TmTApp t1 tyT2 -> do
                 t1' <- eval1 t1
                 return $ TmTApp t1' tyT2
-        TmUnpack _ _ (TmPack tyT11 v12 _) t2 | isval v12 -> return $ tytermSubstTop tyT11 (termSubstTop (termShift 1 v12) t2)
+        {-TmUnpack _ _ (TmPack tyT11 v12 _) t2 | isval v12 -> return $ tytermSubstTop tyT11 (termSubstTop (termShift 1 v12) t2)
         TmUnpack tyX x t1 t2 -> do
                 t1' <- eval1 t1
                 return $ TmUnpack tyX x t1' t2
         TmPack tyT1 t2 tyT3 -> do
                 t2' <- eval1 t2
-                return $ TmPack tyT1 t2' tyT3
+                return $ TmPack tyT1 t2' tyT3-}
         _ -> Nothing
 
 typeof :: Term -> State Context Ty
@@ -71,18 +71,19 @@ typeof t = case t of
                 case tyT1 of
                         TyAll _ tyT12 -> return $ typeSubstTop tyT2 tyT12
                         _ -> error "universal type expected"
-        TmPack tyT1 t2 tyT -> case tyT of
-                TySome tyY tyT2 -> do
-                        tyU <- typeof t2
-                        let tyU' = typeSubstTop tyT1 tyT2
-                        if tyU == tyU' then return tyT else error "doesn't match declared type"
-                _ -> error "existential type expected"
-        TmUnpack tyX x t1 t2 -> do
-                tyT1 <- typeof t1
-                case tyT1 of
-                        TySome tyY tyT11 -> do
-                                addbinding tyX TyVarBind
-                                addbinding x (VarBind tyT11)
-                                tyT2 <- typeof t2
-                                return $ typeShift (-2) tyT2
-                        _ -> error "existential type expected"
+
+{-TmPack tyT1 t2 tyT -> case tyT of
+        TySome tyY tyT2 -> do
+                tyU <- typeof t2
+                let tyU' = typeSubstTop tyT1 tyT2
+                if tyU == tyU' then return tyT else error "doesn't match declared type"
+        _ -> error "existential type expected"
+TmUnpack tyX x t1 t2 -> do
+        tyT1 <- typeof t1
+        case tyT1 of
+                TySome tyY tyT11 -> do
+                        addbinding tyX TyVarBind
+                        addbinding x (VarBind tyT11)
+                        tyT2 <- typeof t2
+                        return $ typeShift (-2) tyT2
+                _ -> error "existential type expected"-}

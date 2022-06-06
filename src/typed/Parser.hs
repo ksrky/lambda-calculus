@@ -35,14 +35,14 @@ pIdent :: Parser String
 pIdent = (:) <$> letterChar <*> many alphaNumChar <?> "`identifier`"
 
 parens :: Parser a -> Parser a
-parens = between (string "(") (string ")")
+parens = between (symbol "(") (string ")")
 
 pTerm :: Parser Term
 pTerm =
         makeExprParser
                 ( choice
-                        [ lexeme pTmAbs
-                        , parens pTerm
+                        [ parens $ lexeme pTerm
+                        , pTmAbs
                         , pTmIf
                         , TmTrue <$ symbol "true"
                         , TmFalse <$ symbol "false"
@@ -60,7 +60,7 @@ pTmAbs = do
         _ <- symbol "\\"
         x <- lexeme pIdent
         _ <- symbol ":"
-        ty <- pTy
+        ty <- lexeme pTy
         _ <- symbol "."
         ctx <- get
         x' <- pickfreshname x
@@ -69,7 +69,7 @@ pTmAbs = do
         return $ TmAbs x' ty t1
 
 pTy :: Parser Ty
-pTy = makeExprParser (TyBool <$ string "Bool") [[assocr "->" TyArr]] <?> "`type`"
+pTy = makeExprParser (lexeme $ TyBool <$ string "Bool") [[assocr "->" TyArr]] <?> "`type`"
     where
         assocr :: Text -> (Ty -> Ty -> Ty) -> Operator Parser Ty
         assocr name f = InfixL (f <$ symbol name)
@@ -90,7 +90,7 @@ pTmIf :: Parser Term
 pTmIf = TmIf <$> (symbol "if" *> lexeme pTerm) <*> (symbol "then" *> lexeme pTerm) <*> (symbol "else" *> lexeme pTerm)
 
 parseTerm :: String -> Either (ParseErrorBundle Text Void) Term
-parseTerm input = parse ((pTerm `evalStateT` []) <* eof) "" (pack input)
+parseTerm input = parse ((lexeme pTerm `evalStateT` []) <* eof) "" (pack input)
 
 prettyError :: ParseErrorBundle Text Void -> String
 prettyError = errorBundlePretty

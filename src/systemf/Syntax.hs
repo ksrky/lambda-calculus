@@ -41,9 +41,9 @@ data Ty
         = TyVar Int Int
         | TyArr Ty Ty
         | TyAll String Ty
-        | TySome String Ty
         deriving (Eq, Show)
 
+-- | TySome String Ty
 typeShiftAbove :: Int -> Int -> Ty -> Ty
 typeShiftAbove d =
         tymap
@@ -60,7 +60,8 @@ tymap onvar c tyT = walk c tyT
                 TyArr tyT1 tyT2 -> TyArr (walk c tyT1) (walk c tyT2)
                 TyVar x n -> onvar c x n
                 TyAll tyX tyT2 -> TyAll tyX (walk (c + 1) tyT2)
-                TySome tyX tyT2 -> TySome tyX (walk (c + 1) tyT2)
+
+-- TySome tyX tyT2 -> TySome tyX (walk (c + 1) tyT2)
 
 typeShift :: Int -> Ty -> Ty
 typeShift d = typeShiftAbove d 0
@@ -86,10 +87,11 @@ data Term
         | TmApp Term Term
         | TmTAbs String Term
         | TmTApp Term Ty
-        | TmPack Ty Term Ty
-        | TmUnpack String String Term Term
         deriving (Eq, Show)
 
+{- | TmPack Ty Term Ty
+ | TmUnpack String String Term Term
+-}
 tmmap :: (Int -> Int -> Int -> Term) -> (Int -> Ty -> Ty) -> Int -> Term -> Term
 tmmap onvar ontype c t = walk c t
     where
@@ -99,8 +101,9 @@ tmmap onvar ontype c t = walk c t
                 TmApp t1 t2 -> TmApp (walk c t1) (walk c t2)
                 TmTAbs tyX t2 -> TmTAbs tyX (walk (c + 1) t2)
                 TmTApp t1 tyT2 -> TmTApp (walk c t1) (ontype c tyT2)
-                TmPack tyT1 t2 tyT3 -> TmPack (ontype c tyT1) (walk c t2) (ontype c tyT3)
-                TmUnpack tyX x t1 t2 -> TmUnpack tyX x (walk c t1) (walk (c + 2) t2)
+
+-- TmPack tyT1 t2 tyT3 -> TmPack (ontype c tyT1) (walk c t2) (ontype c tyT3)
+-- TmUnpack tyX x t1 t2 -> TmUnpack tyX x (walk c t1) (walk (c + 2) t2)
 
 termShiftAbove :: Int -> Int -> Term -> Term
 termShiftAbove d =
