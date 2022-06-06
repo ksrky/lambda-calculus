@@ -31,8 +31,11 @@ lexeme = L.lexeme sc
 symbol :: Text -> Parser Text
 symbol = L.symbol sc
 
-pIdent :: Parser String
-pIdent = (:) <$> letterChar <*> many alphaNumChar <?> "`identifier`"
+pTmIdent :: Parser String
+pTmIdent = (:) <$> lowerChar <*> many alphaNumChar <?> "`identifier`"
+
+pTyIdent :: Parser String
+pTyIdent = (:) <$> upperChar <*> many alphaNumChar <?> "`identifier`"
 
 parens :: Parser a -> Parser a
 parens = between (string "(") (string ")")
@@ -42,10 +45,9 @@ pTerm =
         makeExprParser
                 ( choice
                         [ lexeme pTmAbs
+                        , lexeme pTmTAbs
                         , parens pTerm
-                        , pTmIf
-                        , TmTrue <$ symbol "true"
-                        , TmFalse <$ symbol "false"
+                        , pTmTApp
                         , pTmVar
                         ]
                 )
@@ -58,7 +60,7 @@ pTerm =
 pTmAbs :: Parser Term
 pTmAbs = do
         _ <- symbol "\\"
-        x <- lexeme pIdent
+        x <- lexeme pTmIdent
         _ <- symbol ":"
         ty <- pTy
         _ <- symbol "."
@@ -68,15 +70,9 @@ pTmAbs = do
         put ctx
         return $ TmAbs x' ty t1
 
-pTy :: Parser Ty
-pTy = makeExprParser (TyBool <$ string "Bool") [[assocr "->" TyArr]] <?> "`type`"
-    where
-        assocr :: Text -> (Ty -> Ty -> Ty) -> Operator Parser Ty
-        assocr name f = InfixL (f <$ symbol name)
-
 pTmVar :: Parser Term
 pTmVar = do
-        x <- pIdent
+        x <- pTmIdent
         ctx <- get
         let idx = getVarIndex x ctx
         return $ TmVar idx (length ctx)
@@ -86,8 +82,39 @@ getVarIndex var ctx = case elemIndex var (map fst ctx) of
         Just i -> i
         Nothing -> error $ "Unbound variable name: '" ++ var ++ "'"
 
-pTmIf :: Parser Term
-pTmIf = TmIf <$> (symbol "if" *> lexeme pTerm) <*> (symbol "then" *> lexeme pTerm) <*> (symbol "else" *> lexeme pTerm)
+pTy :: Parser Ty
+pTy = makeExprParser (choice [pTyAll, pTySome, pTyVar]) [[assocr "->" TyArr]] <?> "`type`"
+    where
+        assocr :: Text -> (Ty -> Ty -> Ty) -> Operator Parser Ty
+        assocr name f = InfixL (f <$ symbol name)
+
+pTyVar :: Parser Ty
+pTyVar = do
+        x <- pTyIdent
+        ctx <- get
+        let idx = getVarIndex x ctx
+        return $ TyVar idx (length ctx)
+
+pTyAll :: Parser Ty
+pTyAll = TyAll <$> (symbol "forall" *> pTyIdent) <*> pTy
+
+pTySome :: Parser Ty
+pTySome = TySome <$> (symbol "exists" *> pTyIdent) <*> pTy
+
+pTmTAbs :: Parser Term
+pTmTAbs = do
+        _ <- symbol "\\"
+        x <- lexeme pTyIdent
+        _ <- symbol "."
+        ctx <- get
+        ctx' <- gets (execState (pickfreshname x))
+        put ctx'
+        t1 <- pTerm
+        put ctx
+        return $ TmTAbs x t1
+
+pTmTApp :: Parser Term
+pTmTApp = TmTApp <$> (pTerm <* symbol " ") <*> pTy
 
 parseTerm :: String -> Either (ParseErrorBundle Text Void) Term
 parseTerm input = parse ((pTerm `evalStateT` []) <* eof) "" (pack input)

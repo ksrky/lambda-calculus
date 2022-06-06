@@ -6,6 +6,7 @@ module Syntax where
 import Control.Monad.State (
         MonadState (get, state),
         State,
+        StateT,
         modify,
         runState,
  )
@@ -57,7 +58,7 @@ printtm t = case t of
                 t3' <- printtm t3
                 return $ "if " ++ t1' ++ " then " ++ t2' ++ " else " ++ t3'
 
-pickfreshname :: String -> State Context String
+pickfreshname :: Monad m => String -> StateT Context m String
 pickfreshname x = state $ \ctx -> case lookup x ctx of
         Just _ -> pickfreshname (x ++ "'") `runState` ctx
         Nothing -> (x, (x, NameBind) : ctx)
