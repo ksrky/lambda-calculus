@@ -1,6 +1,6 @@
 module TypedSpec where
 
-import Untyped.Parser
+import Typed.Parser
 
 import System.Directory (getDirectoryContents)
 import System.IO

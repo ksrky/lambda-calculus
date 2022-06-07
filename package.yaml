@@ -49,6 +49,8 @@ executables:
       - -threaded
       - -rtsopts
       - -with-rtsopts=-N
+    dependencies:
+      - lambda-calculus
   typed:
     main: Main.hs
     source-dirs: src/typed
@@ -56,6 +58,8 @@ executables:
       - -threaded
       - -rtsopts
       - -with-rtsopts=-N
+    dependencies:
+      - lambda-calculus
   systemf:
     main: Main.hs
     source-dirs: src/systemf
@@ -63,6 +67,17 @@ executables:
       - -threaded
       - -rtsopts
       - -with-rtsopts=-N
+    dependencies:
+      - lambda-calculus
+  fomega:
+    main: Main.hs
+    source-dirs: src/fomega
+    ghc-options:
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+    dependencies:
+      - lambda-calculus
 
 tests:
   untyped-test:
