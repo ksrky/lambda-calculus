@@ -21,7 +21,9 @@ description: Please see the README on GitHub at <https://github.com/ksrky/lambda
 
 dependencies:
   - base >= 4.7 && < 5
+  - directory
   - haskeline
+  - hspec
   - megaparsec
   - mtl
   - parser-combinators
@@ -31,6 +33,15 @@ library:
   source-dirs: src
 
 executables:
+  lambda-calculus-exe:
+    main: Main.hs
+    source-dirs: src/untyped
+    ghc-options:
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+    dependencies:
+      - lambda-calculus
   untyped:
     main: Main.hs
     source-dirs: src/untyped
@@ -54,9 +65,18 @@ executables:
       - -with-rtsopts=-N
 
 tests:
-  lambda-calculus-test:
+  untyped-test:
     main: Spec.hs
-    source-dirs: test
+    source-dirs: test/untyped
+    ghc-options:
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+    dependencies:
+      - lambda-calculus
+  typed-test:
+    main: Spec.hs
+    source-dirs: test/typed
     ghc-options:
       - -threaded
       - -rtsopts

@@ -1,7 +1,7 @@
 module Main where
 
-import Evaluator (eval)
-import Parser (parseTerm, prettyError)
+import SystemF.Evaluator (eval)
+import SystemF.Parser (parseTerm, prettyError)
 
 import Control.Monad.Trans (MonadIO (liftIO))
 import System.Console.Haskeline (

@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module Syntax where
+module SystemF.Syntax where
 
 import Control.Monad.State (
         MonadState (get, state),

@@ -1,8 +1,8 @@
 module Main where
 
-import Evaluator (eval)
-import Parser (parseTerm, prettyError)
-import Syntax (printtm)
+import Typed.Evaluator (eval)
+import Typed.Parser (parseTerm, prettyError)
+import Typed.Syntax (printtm)
 
 import Control.Monad.Trans (MonadIO (liftIO))
 import System.Console.Haskeline (

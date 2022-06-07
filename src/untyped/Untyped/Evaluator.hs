@@ -1,6 +1,6 @@
-module Evaluator where
+module Untyped.Evaluator where
 
-import Syntax (Context, Term (..))
+import Untyped.Syntax (Context, Term (..))
 
 termShift :: Int -> Term -> Term
 termShift d t = walk 0 t

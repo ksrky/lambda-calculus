@@ -1,6 +1,6 @@
-module Evaluator where
+module SystemF.Evaluator where
 
-import Syntax (
+import SystemF.Syntax (
         Binding (TyVarBind, VarBind),
         Context,
         Term (..),

@@ -1,7 +1,8 @@
-module Evaluator where
+module Typed.Evaluator where
+
+import Typed.Syntax
 
 import Control.Monad.State
-import Syntax
 
 typeof :: Term -> State Context Ty
 typeof t = case t of

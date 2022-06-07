@@ -1,8 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Parser where
+module SystemF.Parser where
 
-import Syntax
+import SystemF.Syntax
 
 import Control.Monad.Combinators.Expr (
         Operator (InfixL, Postfix, Prefix),
