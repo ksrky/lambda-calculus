@@ -1,6 +1,12 @@
 module FOmega.Syntax where
 
-import Control.Monad.State
+import Control.Monad.State (
+        MonadState (state),
+        State,
+        StateT,
+        modify,
+        runState,
+ )
 
 data Kind = KnStar | KnArr Kind Kind deriving (Eq, Show)
 
@@ -15,7 +21,6 @@ data Term
         = TmVar Int Int
         | TmAbs String Ty Term
         | TmApp Term Term
-        | TmAscribe Term Ty
         | TmTAbs String Kind Term
         | TmTApp Term Ty
         deriving (Eq, Show)
@@ -62,7 +67,6 @@ tmmap onvar ontype c t = walk c t
                 TmVar x n -> onvar c x n
                 TmAbs x tyT1 t2 -> TmAbs x (ontype c tyT1) (walk (c + 1) t2)
                 TmApp t1 t2 -> TmApp (walk c t1) (walk c t2)
-                TmAscribe t1 tyT1 -> TmAscribe (walk c t1) (ontype c tyT1)
                 TmTAbs tyX knK1 t2 -> TmTAbs tyX knK1 (walk (c + 1) t2)
                 TmTApp t1 tyT2 -> TmTApp (walk c t1) (ontype c tyT2)
 

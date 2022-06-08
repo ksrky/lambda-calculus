@@ -10,9 +10,14 @@ import System.Console.Haskeline (
         outputStrLn,
         runInputT,
  )
+import System.Environment (getArgs)
 
 main :: IO ()
-main = repl
+main = do
+        args <- getArgs
+        case args of
+                [] -> repl
+                fnames -> processFiles fnames
 
 repl :: IO ()
 repl = runInputT defaultSettings loop
@@ -23,6 +28,16 @@ repl = runInputT defaultSettings loop
                         Nothing -> outputStrLn "Goodbye."
                         Just "" -> outputStrLn "Goodbye."
                         Just input -> liftIO (process input) >> loop
+
+processFiles :: [String] -> IO ()
+processFiles [] = return ()
+processFiles (n : ns) = do
+        let path = "src/systemf/examples/" ++ n
+        contents <- readFile path
+        putStrLn $ "---------- " ++ path ++ " ----------"
+        process contents
+        putStrLn ""
+        processFiles ns
 
 process :: String -> IO ()
 process inp = case parseTerm inp of

@@ -19,6 +19,7 @@ import Control.Monad.State (MonadState (get), State)
 isval :: Term -> Bool
 isval t = case t of
         TmAbs{} -> True
+        TmTAbs{} -> True
         _ -> False
 
 eval :: Term -> Term

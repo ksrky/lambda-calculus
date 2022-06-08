@@ -42,6 +42,8 @@ library
 executable fomega
   main-is: Main.hs
   other-modules:
+      FOmega.Evaluator
+      FOmega.Parser
       FOmega.Syntax
       Paths_lambda_calculus
   hs-source-dirs:
