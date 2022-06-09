@@ -6,6 +6,6 @@
   - TaPL Chapter10
 - [systemf](https://github.com/ksrky/lambda-calculus/tree/master/src/systemf) ... System F (`typed`+ parametric polymophism)
   - TaPL Chapter25
-- fomega ... System Fω (`systemf`+ type operator)
-  - ref: TaPL Chapter29, 30
-- coc ... Calculus of Construction (`fomega` + dependent type)
+- [fomega](https://github.com/ksrky/lambda-calculus/tree/master/src/fomega) ... System Fω (`systemf`+ type operators)
+  - TaPL Chapter29, 30
+- coc ... Calculus of Construction (`fomega` + dependent types)

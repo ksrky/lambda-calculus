@@ -35,6 +35,8 @@ processFiles (n : ns) = do
         let path = "src/systemf/examples/" ++ n
         contents <- readFile path
         putStrLn $ "---------- " ++ path ++ " ----------"
+        putStrLn $ "  " ++ contents
+        putStr "> "
         process contents
         putStrLn ""
         processFiles ns
