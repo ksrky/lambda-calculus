@@ -5,7 +5,7 @@ module FOmega.Parser where
 import FOmega.Syntax
 
 import Control.Monad.Combinators.Expr (
-        Operator (InfixL, Postfix, Prefix),
+        Operator (InfixL, InfixR, Postfix, Prefix),
         makeExprParser,
  )
 import Control.Monad.State
@@ -45,27 +45,31 @@ parensNosc = between (symbol "(") (string ")")
 
 pTerm :: Parser Term
 pTerm =
-        makeExprParser
-                ( choice
-                        [ try $ lexeme pTmTApp
-                        , try $ lexeme pTmAbs
-                        , lexeme pTmTAbs
-                        , parensNosc pTerm
-                        , lexeme pTmVar
-                        ]
-                )
-                [[assocl " " TmApp]]
+        choice
+                [ try $ lexeme pTmTApp
+                , try $ lexeme pTmAbs
+                , lexeme pTmTAbs
+                , parens $ lexeme pTerm
+                , try $ lexeme pTmApp
+                , lexeme pTmVar
+                ]
                 <?> "`term`"
     where
         assocl :: Text -> (Term -> Term -> Term) -> Operator Parser Term
-        assocl name f = InfixL (f <$ symbol name)
+        assocl op f = InfixL (f <$ symbol op)
+
+pTmNosc :: Parser Term
+pTmNosc = choice [parensNosc $ lexeme pTerm, pTmVar]
+
+pTmApp :: Parser Term
+pTmApp = TmApp <$> pTmNosc <* symbol " " <*> pTerm
 
 pTmAbs :: Parser Term
 pTmAbs = do
         _ <- symbol "\\"
         x <- lexeme pTmIdent
         _ <- symbol ":"
-        ty <- lexeme pTy
+        ty <- pTy
         _ <- symbol "."
         ctx <- get
         x' <- pickfreshname x
@@ -89,16 +93,25 @@ pTy :: Parser Ty
 pTy =
         makeExprParser
                 ( choice
-                        [ parens pTy
+                        [ parens $ lexeme pTy
                         , lexeme pTyAll
+                        , try $ lexeme pTyApp
                         , lexeme pTyVar
                         ]
                 )
                 [[assocr "->" TyArr]]
                 <?> "`type`"
     where
+        assocl :: Text -> (Ty -> Ty -> Ty) -> Operator Parser Ty
+        assocl op f = InfixL (f <$ symbol op)
         assocr :: Text -> (Ty -> Ty -> Ty) -> Operator Parser Ty
-        assocr name f = InfixL (f <$ symbol name)
+        assocr op f = InfixR (f <$ symbol op)
+
+pTyNosc :: Parser Ty
+pTyNosc = choice [parensNosc pTy, pTyVar]
+
+pTyApp :: Parser Ty
+pTyApp = TyApp <$> pTyNosc <* symbol " " <*> pTy
 
 pTyVar :: Parser Ty
 pTyVar = do
@@ -116,7 +129,7 @@ pTyAll = do
         _ <- symbol "."
         ctx <- get
         x' <- pickfreshname x
-        ty <- lexeme pTy
+        ty <- pTy
         put ctx
         return $ TyAll x' k ty
 
@@ -134,7 +147,7 @@ pTmTAbs = do
         return $ TmTAbs x' k t1
 
 pTmTApp :: Parser Term
-pTmTApp = TmTApp <$> parens pTerm <*> parensNosc pTy
+pTmTApp = TmTApp <$> parens pTerm <*> between (symbol "[") (string "]") pTy
 
 pKind :: Parser Kind
 pKind = makeExprParser (choice [KnStar <$ symbol "*", parens pKind]) [[assocr "->" KnArr]] <?> "`kind`"

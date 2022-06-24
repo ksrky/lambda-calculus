@@ -1,37 +1,53 @@
-module FOmega.Syntax where
+module Syntax where
 
-import Control.Monad.State (
-        MonadState (state),
-        State,
-        StateT,
-        modify,
-        runState,
- )
-
-data Kind = KnStar | KnArr Kind Kind deriving (Eq, Show)
+import Control.Monad.State
+import qualified Data.Bifunctor
 
 data Ty
-        = TyVar Int Int
+        = TyId String
+        | TyVar Int Int
+        | TyUnit
+        | TyFloat
+        | TyRecord [(String, Ty)]
+        | TyVariant [(String, Ty)]
+        | TyString
+        | TyBool
         | TyArr Ty Ty
-        | TyAbs String Kind Ty
-        | TyApp Ty Ty
-        | TyAll String Kind Ty
+        | TyNat
         deriving (Eq, Show)
 
 data Term
-        = TmVar Int Int
+        = TmAscribe Term Ty
+        | TmString String
+        | TmTrue
+        | TmFalse
+        | TmIf Term Term Term
+        | TmCase Term [(String, (String, Term))]
+        | TmTag String Term Ty
+        | TmUnit
+        | TmVar Int Int
+        | TmFloat Float
+        | TmTimesfloat Term Term
+        | TmLet String Term Term
+        | TmRecord [(String, Term)]
+        | TmProj Term String
         | TmAbs String Ty Term
         | TmApp Term Term
-        | TmTAbs String Kind Term
-        | TmTApp Term Ty
+        | TmFix Term
+        | TmZero
+        | TmSucc Term
+        | TmPred Term
+        | TmIsZero Term
+        | TmInert Ty
         deriving (Eq, Show)
 
 data Binding
         = NameBind
-        | VarBind Ty
-        | TyVarBind Kind
-        | TyAbbBind Ty (Maybe Kind)
         | TmAbbBind Term (Maybe Ty)
+        | VarBind Ty
+        | TyVarBind
+        | TyAbbBind Ty
+        deriving (Eq, Show)
 
 type Context = [(String, Binding)]
 
@@ -39,10 +55,13 @@ data Command
         = Import String
         | Eval Term
         | Bind String Binding
-        | SomeBind String String Term
+        deriving (Eq, Show)
 
 addbinding :: String -> Binding -> State Context ()
 addbinding x bind = modify $ \ctx -> (x, bind) : ctx
+
+addname :: String -> State Context ()
+addname x = addbinding x NameBind
 
 pickfreshname :: Monad m => String -> StateT Context m String
 pickfreshname x = state $ \ctx -> case lookup x ctx of
@@ -52,29 +71,56 @@ pickfreshname x = state $ \ctx -> case lookup x ctx of
 index2name :: Context -> Int -> String
 index2name ctx x = fst (ctx !! x)
 
+name2index :: Context -> String -> Int
+name2index ctx x = case ctx of
+        [] -> error $ "Identifier " ++ x ++ " is unbound"
+        (y, _) : rest ->
+                if y == x
+                        then 0
+                        else 1 + name2index rest x
+
 tymap :: (Int -> Int -> Int -> Ty) -> Int -> Ty -> Ty
 tymap onvar c tyT = walk c tyT
     where
         walk c tyT = case tyT of
+                TyString -> TyString
+                TyId b -> tyT
+                TyVariant fieldtys -> TyVariant $ map (Data.Bifunctor.second (walk c)) fieldtys
+                TyUnit -> TyUnit
+                TyFloat -> TyFloat
+                TyRecord fieldtys -> TyRecord $ map (Data.Bifunctor.second (walk c)) fieldtys
                 TyVar x n -> onvar c x n
                 TyArr tyT1 tyT2 -> TyArr (walk c tyT1) (walk c tyT2)
-                TyAbs tyX knK1 tyT2 -> TyAbs tyX knK1 (walk (c + 1) tyT2)
-                TyAll tyX knK1 tyT2 -> TyAll tyX knK1 (walk (c + 1) tyT2)
-                TyApp tyT1 tyT2 -> TyApp (walk c tyT1) (walk c tyT2)
+                TyBool -> TyBool
+                TyNat -> TyNat
 
 tmmap :: (Int -> Int -> Int -> Term) -> (Int -> Ty -> Ty) -> Int -> Term -> Term
 tmmap onvar ontype c t = walk c t
     where
         walk c t = case t of
+                TmAscribe t1 tyT1 -> TmAscribe (walk c t1) (ontype c tyT1)
+                TmString s -> TmString s
                 TmVar x n -> onvar c x n
+                TmTrue -> TmTrue
+                TmFalse -> TmFalse
+                TmIf t1 t2 t3 -> TmIf (walk c t1) (walk c t2) (walk c t3)
+                TmTag l t1 tyT -> TmTag l (walk c t1) (ontype c tyT)
+                TmCase t cases -> TmCase (walk c t) (map (\(li, (xi, ti)) -> (li, (xi, walk (c + 1) ti))) cases)
+                TmLet x t1 t2 -> TmLet x (walk c t1) (walk (c + 1) t2)
+                TmUnit -> TmUnit
+                TmInert tyT -> TmInert (ontype c tyT)
+                TmFloat n -> TmFloat n
+                TmTimesfloat t1 t2 -> TmTimesfloat (walk c t1) (walk c t2)
+                TmProj t1 l -> TmProj (walk c t1) l
+                TmRecord fields -> TmRecord $ map (Data.Bifunctor.second (walk c)) fields
                 TmAbs x tyT1 t2 -> TmAbs x (ontype c tyT1) (walk (c + 1) t2)
                 TmApp t1 t2 -> TmApp (walk c t1) (walk c t2)
-                TmTAbs tyX knK1 t2 -> TmTAbs tyX knK1 (walk (c + 1) t2)
-                TmTApp t1 tyT2 -> TmTApp (walk c t1) (ontype c tyT2)
+                TmFix t1 -> TmFix (walk c t1)
+                TmZero -> TmZero
+                TmSucc t1 -> TmSucc (walk c t1)
+                TmPred t1 -> TmPred (walk c t1)
+                TmIsZero t1 -> TmIsZero (walk c t1)
 
-----------------------------------------------------------------
--- Shift
-----------------------------------------------------------------
 typeShiftAbove :: Int -> Int -> Ty -> Ty
 typeShiftAbove d =
         tymap
@@ -99,16 +145,11 @@ typeShift d = typeShiftAbove d 0
 bindingshift :: Int -> Binding -> Binding
 bindingshift d bind = case bind of
         NameBind -> NameBind
+        TmAbbBind t tyT_opt -> TmAbbBind (termShift d t) (typeShift d <$> tyT_opt)
         VarBind tyT -> VarBind (typeShift d tyT)
-        TyVarBind knK -> TyVarBind knK
-        TyAbbBind tyT opt -> TyAbbBind (typeShift d tyT) opt
-        TmAbbBind t tyT_opt ->
-                let tyT_opt' = typeShift d <$> tyT_opt
-                 in TmAbbBind (termShift d t) tyT_opt'
+        TyVarBind -> TyVarBind
+        TyAbbBind tyT -> TyAbbBind (typeShift d tyT)
 
-----------------------------------------------------------------
--- Substitution
-----------------------------------------------------------------
 termSubst :: Int -> Term -> Term -> Term
 termSubst j s =
         tmmap
