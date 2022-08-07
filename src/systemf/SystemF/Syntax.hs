@@ -10,49 +10,59 @@ import Control.Monad.State (
         modify,
         runState,
  )
+import Data.List (elemIndex)
 
 ----------------------------------------------------------------
--- Context
+-- Syntax
 ----------------------------------------------------------------
-data Binding = NameBind | VarBind Ty | TyVarBind
+data Term
+        = TmVar Int Int
+        | TmAbs String Ty Term
+        | TmApp Term Term
+        | TmTAbs String Term
+        | TmTApp Term Ty
+        deriving (Show)
 
-type Context = [(String, Binding)]
-
-addbinding :: String -> Binding -> State Context ()
-addbinding x bind = modify $ \ctx -> (x, bind) : ctx
-
-getTypeFromContext :: Context -> Int -> Ty
-getTypeFromContext ctx i = case ctx !! i of
-        (_, VarBind tyT) -> tyT
-        _ -> error $ "getTypeFromContext: Wrong kind of binding for variable " ++ index2name ctx i
-
-pickfreshname :: Monad m => String -> StateT Context m String
-pickfreshname x = state $ \ctx -> case lookup x ctx of
-        Just _ -> pickfreshname (x ++ "'") `runState` ctx
-        Nothing -> (x, (x, NameBind) : ctx)
-
-index2name :: Context -> Int -> String
-index2name ctx x = fst (ctx !! x)
-
-----------------------------------------------------------------
--- Type
-----------------------------------------------------------------
 data Ty
         = TyVar Int Int
         | TyArr Ty Ty
         | TyAll String Ty
         deriving (Eq, Show)
 
--- | TySome String Ty
-typeShiftAbove :: Int -> Int -> Ty -> Ty
-typeShiftAbove d =
-        tymap
-                ( \c x n -> case () of
-                        _ | x < c -> TyVar x (n + d)
-                        _ | x + d < 0 -> error "Scoping error!"
-                        _ -> TyVar (x + d) (n + d)
-                )
+data Binding = NameBind | VarBind Ty | TyVarBind
 
+----------------------------------------------------------------
+-- Context
+----------------------------------------------------------------
+type Context = [(String, Binding)]
+
+emptyContext :: Context
+emptyContext = []
+
+addbinding :: Monad m => String -> Binding -> StateT Context m ()
+addbinding x bind = modify $ \ctx -> (x, bind) : ctx
+
+pickfreshname :: String -> Context -> (String, Context)
+pickfreshname x ctx = case lookup x ctx of
+        Just _ -> pickfreshname (x ++ "'") ctx
+        Nothing -> (x, (x, NameBind) : ctx)
+
+index2name :: Context -> Int -> String
+index2name ctx x = fst (ctx !! x)
+
+getVarIndex :: String -> Context -> Int
+getVarIndex var ctx = case elemIndex var (map fst ctx) of
+        Just i -> i
+        Nothing -> error $ "Unbound variable name: '" ++ var ++ "'"
+
+getTypeFromContext :: Context -> Int -> Ty
+getTypeFromContext ctx i = case ctx !! i of
+        (_, VarBind tyT) -> tyT
+        _ -> error $ "getTypeFromContext: Wrong kind of binding for variable " ++ index2name ctx i
+
+----------------------------------------------------------------
+-- Type
+----------------------------------------------------------------
 tymap :: (Int -> Int -> Int -> Ty) -> Int -> Ty -> Ty
 tymap onvar c tyT = walk c tyT
     where
@@ -61,7 +71,14 @@ tymap onvar c tyT = walk c tyT
                 TyVar x n -> onvar c x n
                 TyAll tyX tyT2 -> TyAll tyX (walk (c + 1) tyT2)
 
--- TySome tyX tyT2 -> TySome tyX (walk (c + 1) tyT2)
+typeShiftAbove :: Int -> Int -> Ty -> Ty
+typeShiftAbove d =
+        tymap
+                ( \c x n ->
+                        if x < c
+                                then TyVar x (n + d)
+                                else TyVar (x + d) (n + d)
+                )
 
 typeShift :: Int -> Ty -> Ty
 typeShift d = typeShiftAbove d 0
@@ -81,17 +98,6 @@ typeSubstTop tyS tyT = typeShift (-1) (typeSubst (typeShift 1 tyS) 0 tyT)
 ----------------------------------------------------------------
 -- Term
 ----------------------------------------------------------------
-data Term
-        = TmVar Int Int
-        | TmAbs String Ty Term
-        | TmApp Term Term
-        | TmTAbs String Term
-        | TmTApp Term Ty
-        deriving (Eq, Show)
-
-{- | TmPack Ty Term Ty
- | TmUnpack String String Term Term
--}
 tmmap :: (Int -> Int -> Int -> Term) -> (Int -> Ty -> Ty) -> Int -> Term -> Term
 tmmap onvar ontype c t = walk c t
     where
@@ -102,16 +108,13 @@ tmmap onvar ontype c t = walk c t
                 TmTAbs tyX t2 -> TmTAbs tyX (walk (c + 1) t2)
                 TmTApp t1 tyT2 -> TmTApp (walk c t1) (ontype c tyT2)
 
--- TmPack tyT1 t2 tyT3 -> TmPack (ontype c tyT1) (walk c t2) (ontype c tyT3)
--- TmUnpack tyX x t1 t2 -> TmUnpack tyX x (walk c t1) (walk (c + 2) t2)
-
 termShiftAbove :: Int -> Int -> Term -> Term
 termShiftAbove d =
         tmmap
                 ( \c x n ->
-                        if x >= c
-                                then TmVar (x + d) (n + d)
-                                else TmVar x (n + d)
+                        if x < c
+                                then TmVar x (n + d)
+                                else TmVar (x + d) (n + d)
                 )
                 (typeShiftAbove d)
 
@@ -137,3 +140,32 @@ termSubstTop s t = termShift (-1) (termSubst 0 (termShift 1 s) t)
 
 tytermSubstTop :: Ty -> Term -> Term
 tytermSubstTop tyS t = termShift (-1) (tytermSubst (typeShift 1 tyS) 0 t)
+
+----------------------------------------------------------------
+-- Printing
+----------------------------------------------------------------
+printtm :: Context -> Term -> String
+printtm ctx t = case t of
+        TmVar x n ->
+                if length ctx == n
+                        then index2name ctx x
+                        else "[bad index]"
+        TmAbs x tyT1 t2 ->
+                let (x', ctx') = pickfreshname x ctx
+                 in "(λ" ++ x' ++ ": " ++ printty ctx tyT1 ++ ". " ++ printtm ctx' t2 ++ ")"
+        TmApp t1 t2 -> "(" ++ printtm ctx t1 ++ " " ++ printtm ctx t2 ++ ")"
+        TmTAbs tyX t2 ->
+                let (tyX', ctx') = pickfreshname tyX ctx
+                 in "(Λ" ++ tyX' ++ ". " ++ printtm ctx' t2 ++ ")"
+        TmTApp t1 tyT2 -> "(" ++ printtm ctx t1 ++ " [" ++ printty ctx tyT2 ++ "]" ++ ")"
+
+printty :: Context -> Ty -> String
+printty ctx ty = case ty of
+        TyVar x n ->
+                if length ctx == n
+                        then index2name ctx x
+                        else "[bad index]"
+        TyArr tyT1 tyT2 -> "(" ++ printty ctx tyT1 ++ " -> " ++ printty ctx tyT2 ++ ")"
+        TyAll tyX tyT2 ->
+                let (tyX', ctx') = pickfreshname tyX ctx
+                 in "(∀" ++ tyX ++ ". " ++ printty ctx' tyT2 ++ ")"

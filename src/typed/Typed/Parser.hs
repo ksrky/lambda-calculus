@@ -2,18 +2,43 @@
 
 module Typed.Parser where
 
-import Typed.Syntax
+import Typed.Syntax (
+        Binding (NameBind),
+        Context,
+        Term (..),
+        Ty (..),
+        addbinding,
+        getVarIndex,
+ )
 
 import Control.Monad.Combinators.Expr (
         Operator (InfixL, Postfix, Prefix),
         makeExprParser,
  )
-import Control.Monad.State
-import Data.List (elemIndex)
+import Control.Monad.State (
+        MonadState (get, put),
+        StateT,
+        evalStateT,
+ )
 import Data.Text (Text, pack)
 import Data.Void (Void)
-import Text.Megaparsec
-import Text.Megaparsec.Char
+import Text.Megaparsec (
+        MonadParsec (eof),
+        ParseErrorBundle,
+        Parsec,
+        between,
+        choice,
+        errorBundlePretty,
+        many,
+        parse,
+        (<?>),
+ )
+import Text.Megaparsec.Char (
+        alphaNumChar,
+        letterChar,
+        space1,
+        string,
+ )
 import qualified Text.Megaparsec.Char.Lexer as L
 
 type Parser = StateT Context (Parsec Void Text)
@@ -60,13 +85,13 @@ pTmAbs = do
         _ <- symbol "\\"
         x <- lexeme pIdent
         _ <- symbol ":"
-        ty <- lexeme pTy
+        tyT1 <- lexeme pTy
         _ <- symbol "."
         ctx <- get
-        x' <- pickfreshname x
-        t1 <- pTerm
+        addbinding x NameBind
+        t2 <- pTerm
         put ctx
-        return $ TmAbs x' ty t1
+        return $ TmAbs x tyT1 t2
 
 pTy :: Parser Ty
 pTy = makeExprParser (lexeme $ TyBool <$ string "Bool") [[assocr "->" TyArr]] <?> "`type`"
@@ -80,11 +105,6 @@ pTmVar = do
         ctx <- get
         let idx = getVarIndex x ctx
         return $ TmVar idx (length ctx)
-
-getVarIndex :: String -> Context -> Int
-getVarIndex var ctx = case elemIndex var (map fst ctx) of
-        Just i -> i
-        Nothing -> error $ "Unbound variable name: '" ++ var ++ "'"
 
 pTmIf :: Parser Term
 pTmIf = TmIf <$> (symbol "if" *> lexeme pTerm) <*> (symbol "then" *> lexeme pTerm) <*> (symbol "else" *> lexeme pTerm)

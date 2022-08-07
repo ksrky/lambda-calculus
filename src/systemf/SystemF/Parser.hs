@@ -65,10 +65,10 @@ pTmAbs = do
         ty <- lexeme pTy
         _ <- symbol "."
         ctx <- get
-        x' <- pickfreshname x
+        addbinding x NameBind
         t1 <- pTerm
         put ctx
-        return $ TmAbs x' ty t1
+        return $ TmAbs x ty t1
 
 pTmVar :: Parser Term
 pTmVar = do
@@ -76,11 +76,6 @@ pTmVar = do
         ctx <- get
         let idx = getVarIndex x ctx
         return $ TmVar idx (length ctx)
-
-getVarIndex :: String -> Context -> Int
-getVarIndex var ctx = case elemIndex var (map fst ctx) of
-        Just i -> i
-        Nothing -> error $ "Unbound variable name: '" ++ var ++ "'"
 
 pTy :: Parser Ty
 pTy = makeExprParser (choice [pTyAll, lexeme pTyVar]) [[assocr "->" TyArr]] <?> "`type`"
@@ -101,10 +96,10 @@ pTyAll = do
         x <- lexeme pTyIdent
         _ <- symbol "."
         ctx <- get
-        x' <- pickfreshname x
+        addbinding x NameBind
         ty <- lexeme pTy
         put ctx
-        return $ TyAll x' ty
+        return $ TyAll x ty
 
 pTmTAbs :: Parser Term
 pTmTAbs = do
@@ -112,10 +107,10 @@ pTmTAbs = do
         x <- lexeme pTyIdent
         _ <- symbol "."
         ctx <- get
-        x' <- pickfreshname x
+        addbinding x NameBind
         t1 <- pTerm
         put ctx
-        return $ TmTAbs x' t1
+        return $ TmTAbs x t1
 
 pTmTApp :: Parser Term
 pTmTApp = TmTApp <$> lexeme (parens pTerm) <*> between (symbol "[") (string "]") pTy

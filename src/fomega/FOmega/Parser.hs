@@ -2,18 +2,46 @@
 
 module FOmega.Parser where
 
-import FOmega.Syntax
+import FOmega.Syntax (
+        Binding (NameBind),
+        Context,
+        Kind (..),
+        Term (..),
+        Ty (TyAll, TyApp, TyArr, TyVar),
+        addbinding,
+        getVarIndex,
+ )
 
 import Control.Monad.Combinators.Expr (
         Operator (InfixL, InfixR, Postfix, Prefix),
         makeExprParser,
  )
-import Control.Monad.State
+import Control.Monad.State (
+        MonadState (get, put),
+        StateT,
+        evalStateT,
+ )
 import Data.List (elemIndex)
 import Data.Text (Text, pack)
 import Data.Void (Void)
-import Text.Megaparsec
-import Text.Megaparsec.Char
+import Text.Megaparsec (
+        MonadParsec (eof, try),
+        ParseErrorBundle,
+        Parsec,
+        between,
+        choice,
+        errorBundlePretty,
+        many,
+        parse,
+        (<?>),
+ )
+import Text.Megaparsec.Char (
+        alphaNumChar,
+        lowerChar,
+        space1,
+        string,
+        upperChar,
+ )
 import qualified Text.Megaparsec.Char.Lexer as L
 
 type Parser = StateT Context (Parsec Void Text)
@@ -46,12 +74,12 @@ parensNosc = between (symbol "(") (string ")")
 pTerm :: Parser Term
 pTerm =
         choice
-                [ try $ lexeme pTmTApp
-                , try $ lexeme pTmAbs
-                , lexeme pTmTAbs
-                , parens $ lexeme pTerm
-                , try $ lexeme pTmApp
-                , lexeme pTmVar
+                [ try pTmTApp
+                , try pTmAbs
+                , pTmTAbs
+                , try pTmApp
+                , parensNosc pTerm
+                , pTmVar
                 ]
                 <?> "`term`"
     where
@@ -59,10 +87,10 @@ pTerm =
         assocl op f = InfixL (f <$ symbol op)
 
 pTmNosc :: Parser Term
-pTmNosc = choice [parensNosc $ lexeme pTerm, pTmVar]
+pTmNosc = choice [parensNosc $ lexeme pTerm, pTerm]
 
 pTmApp :: Parser Term
-pTmApp = TmApp <$> pTmNosc <* symbol " " <*> pTerm
+pTmApp = TmApp <$> pTmNosc <* symbol " " <*> choice [parensNosc pTerm, pTmVar]
 
 pTmAbs :: Parser Term
 pTmAbs = do
@@ -72,10 +100,10 @@ pTmAbs = do
         ty <- pTy
         _ <- symbol "."
         ctx <- get
-        x' <- pickfreshname x
+        addbinding x NameBind
         t1 <- pTerm
         put ctx
-        return $ TmAbs x' ty t1
+        return $ TmAbs x ty t1
 
 pTmVar :: Parser Term
 pTmVar = do
@@ -84,19 +112,14 @@ pTmVar = do
         let idx = getVarIndex x ctx
         return $ TmVar idx (length ctx)
 
-getVarIndex :: String -> Context -> Int
-getVarIndex var ctx = case elemIndex var (map fst ctx) of
-        Just i -> i
-        Nothing -> error $ "Unbound variable name: '" ++ var ++ "'"
-
 pTy :: Parser Ty
 pTy =
         makeExprParser
                 ( choice
-                        [ parens $ lexeme pTy
-                        , lexeme pTyAll
-                        , try $ lexeme pTyApp
-                        , lexeme pTyVar
+                        [ parensNosc pTy
+                        , pTyAll
+                        , try pTyApp
+                        , pTyVar
                         ]
                 )
                 [[assocr "->" TyArr]]
@@ -128,10 +151,10 @@ pTyAll = do
         k <- lexeme pKind
         _ <- symbol "."
         ctx <- get
-        x' <- pickfreshname x
+        addbinding x NameBind
         ty <- pTy
         put ctx
-        return $ TyAll x' k ty
+        return $ TyAll x k ty
 
 pTmTAbs :: Parser Term
 pTmTAbs = do
@@ -141,13 +164,13 @@ pTmTAbs = do
         k <- lexeme pKind
         _ <- symbol "."
         ctx <- get
-        x' <- pickfreshname x
+        addbinding x NameBind
         t1 <- pTerm
         put ctx
-        return $ TmTAbs x' k t1
+        return $ TmTAbs x k t1
 
 pTmTApp :: Parser Term
-pTmTApp = TmTApp <$> parens pTerm <*> between (symbol "[") (string "]") pTy
+pTmTApp = TmTApp <$> parens (lexeme pTerm) <*> between (symbol "[") (string "]") pTy
 
 pKind :: Parser Kind
 pKind = makeExprParser (choice [KnStar <$ symbol "*", parens pKind]) [[assocr "->" KnArr]] <?> "`kind`"
@@ -156,7 +179,7 @@ pKind = makeExprParser (choice [KnStar <$ symbol "*", parens pKind]) [[assocr "-
         assocr name f = InfixL (f <$ symbol name)
 
 parseTerm :: String -> Either (ParseErrorBundle Text Void) Term
-parseTerm input = parse ((pTerm `evalStateT` []) <* eof) "" (pack input)
+parseTerm input = parse ((lexeme pTerm `evalStateT` []) <* eof) "" (pack input)
 
 prettyError :: ParseErrorBundle Text Void -> String
 prettyError = errorBundlePretty

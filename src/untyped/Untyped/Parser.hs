@@ -2,7 +2,13 @@
 
 module Untyped.Parser where
 
-import Untyped.Syntax (Context, Term (..), pickfreshname)
+import Untyped.Syntax (
+        Binding (NameBind),
+        Context,
+        Term (..),
+        addbinding,
+        getVarIndex,
+ )
 
 import Control.Monad.Combinators.Expr (
         Operator (InfixL, Postfix, Prefix),
@@ -68,7 +74,7 @@ pTmAbs = do
         x <- lexeme pIdent
         _ <- symbol "."
         ctx <- get
-        x' <- pickfreshname x
+        addbinding x NameBind
         t1 <- pTerm
         put ctx
         return $ TmAbs x t1
@@ -79,11 +85,6 @@ pTmVar = do
         ctx <- get
         let idx = getVarIndex x ctx
         return $ TmVar idx (length ctx)
-
-getVarIndex :: String -> Context -> Int
-getVarIndex var ctx = case elemIndex var (map fst ctx) of
-        Just i -> i
-        Nothing -> error $ "Unbound variable name: '" ++ var ++ "'"
 
 parseTerm :: String -> Either (ParseErrorBundle Text Void) Term
 parseTerm input = parse ((lexeme pTerm `evalStateT` []) <* eof) "" (pack input)

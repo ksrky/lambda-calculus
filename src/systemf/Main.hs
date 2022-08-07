@@ -1,7 +1,9 @@
 module Main where
 
+import System.Environment (getArgs)
 import SystemF.Evaluator (eval)
 import SystemF.Parser (parseTerm, prettyError)
+import SystemF.Syntax (emptyContext, printtm)
 
 import Control.Monad.Trans (MonadIO (liftIO))
 import System.Console.Haskeline (
@@ -10,14 +12,13 @@ import System.Console.Haskeline (
         outputStrLn,
         runInputT,
  )
-import System.Environment (getArgs)
 
 main :: IO ()
 main = do
         args <- getArgs
         case args of
                 [] -> repl
-                fnames -> processFiles fnames
+                fnames -> mapM_ processFile fnames
 
 repl :: IO ()
 repl = runInputT defaultSettings loop
@@ -29,9 +30,8 @@ repl = runInputT defaultSettings loop
                         Just "" -> outputStrLn "Goodbye."
                         Just input -> liftIO (process input) >> loop
 
-processFiles :: [String] -> IO ()
-processFiles [] = return ()
-processFiles (n : ns) = do
+processFile :: String -> IO ()
+processFile n = do
         let path = "src/systemf/examples/" ++ n
         contents <- readFile path
         putStrLn $ "---------- " ++ path ++ " ----------"
@@ -39,9 +39,8 @@ processFiles (n : ns) = do
         putStr "> "
         process contents
         putStrLn ""
-        processFiles ns
 
 process :: String -> IO ()
 process inp = case parseTerm inp of
         Left err -> putStrLn $ prettyError err
-        Right trm -> print $ eval trm
+        Right term -> putStrLn $ printtm emptyContext (eval term)
