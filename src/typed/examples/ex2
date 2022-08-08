@@ -1,1 +1,2 @@
-if true then false else true;
+f:Bool->Bool;
+(\x:Bool.f x) false; 

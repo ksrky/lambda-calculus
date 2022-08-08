@@ -2,10 +2,23 @@ module Main where
 
 import Typed.Evaluator (eval, typeof)
 import Typed.Parser (pCommands, prettyError)
-import Typed.Syntax (CT, Command (..), Context, addbinding, emptyContext, evalCT, printtm, printty)
+import Typed.Syntax (
+        Command (..),
+        Context,
+        addbinding,
+        emptyContext,
+        printtm,
+        printty,
+ )
 
-import Control.Exception.Safe
-import Control.Monad.State
+import Control.Exception.Safe (MonadThrow)
+import Control.Monad.State (
+        MonadIO (..),
+        MonadState (get),
+        StateT,
+        execStateT,
+        modify,
+ )
 import Control.Monad.Trans (MonadIO (liftIO))
 import System.Console.Haskeline (
         InputT,
@@ -51,16 +64,15 @@ process inp ctx = case pCommands inp of
                 ctx' <- mapM processCommand cmds `execStateT` ctx
                 return ctx
 
-processCommand :: (MonadThrow m, MonadIO m) => Command -> CT m ()
+processCommand :: (MonadThrow m, MonadIO m) => Command -> StateT Context m ()
 processCommand cmd = case cmd of
         Eval t -> do
-                tyT <- evalCT $ typeof t
-                let t' = eval t
                 ctx <- get
+                tyT <- typeof ctx t
+                let t' = eval t
                 liftIO $ do
                         putStrLn $ "  " ++ printtm ctx t
                         putStr $ "> " ++ printtm ctx t'
                         putStr " : "
                         putStrLn $ printty tyT
-        Bind x bind -> do
-                addbinding x bind
+        Bind x bind -> modify $ addbinding x bind

@@ -42,8 +42,11 @@ type Context = [(String, Binding)]
 emptyContext :: Context
 emptyContext = []
 
-addbinding :: Monad m => String -> Binding -> CT m ()
-addbinding x bind = modify $ \ctx -> (x, bind) : ctx
+addbinding :: String -> Binding -> Context -> Context
+addbinding x bind ctx = (x, bind) : ctx
+
+addname :: String -> Context -> Context
+addname x ctx = (x, NameBind) : ctx
 
 pickfreshname :: String -> Context -> (String, Context)
 pickfreshname x ctx = case lookup x ctx of
@@ -62,15 +65,6 @@ getTypeFromContext :: MonadThrow m => Context -> Int -> m Ty
 getTypeFromContext ctx i = case ctx !! i of
         (_, VarBind tyT) -> return tyT
         _ -> throwString $ "Wrong kind of binding for variable " ++ index2name ctx i
-
-type CT m = StateT Context m
-
-evalCT :: Monad m => CT m a -> CT m a
-evalCT f = do
-        ctx <- get
-        v <- f
-        put ctx
-        return v
 
 ----------------------------------------------------------------
 -- Term

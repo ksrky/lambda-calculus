@@ -32,6 +32,7 @@ t ::=                       :terms
       t t                   application
       true                  constant true
       false                 constant false
+      if t then t else t    conditional
 
 T ::=                       :types
       Bool                  type of booleans

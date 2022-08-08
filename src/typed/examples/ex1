@@ -1,1 +1,1 @@
-(\x: Bool. x) true;
+if true then false else true;

@@ -2,11 +2,28 @@
 
 module Typed.Parser where
 
+import Typed.Syntax (
+        Binding (VarBind),
+        Command (..),
+        Context,
+        Term (..),
+        Ty (..),
+        addname,
+        emptyContext,
+        getVarIndex,
+ )
+
 import Control.Monad.Combinators.Expr (
-        Operator (InfixL),
+        Operator (InfixL, InfixR),
         makeExprParser,
  )
-import Control.Monad.State (MonadState (get), evalStateT)
+import Control.Monad.State (
+        MonadState (get),
+        MonadTrans (lift),
+        StateT,
+        evalStateT,
+        modify,
+ )
 import Data.Text (Text, pack)
 import Data.Void (Void)
 import Text.Megaparsec (
@@ -30,19 +47,8 @@ import Text.Megaparsec.Char (
         upperChar,
  )
 import qualified Text.Megaparsec.Char.Lexer as L
-import Typed.Syntax (
-        Binding (NameBind, VarBind),
-        CT,
-        Command (..),
-        Term (..),
-        Ty (..),
-        addbinding,
-        emptyContext,
-        evalCT,
-        getVarIndex,
- )
 
-type Parser = CT (Parsec Void Text)
+type Parser = Parsec Void Text
 
 sc :: Parser ()
 sc =
@@ -66,59 +72,62 @@ pUCID = (:) <$> upperChar <*> many alphaNumChar <?> "`UCID`"
 parens :: Parser a -> Parser a
 parens = between (symbol "(") (string ")")
 
-pTerm :: Parser Term
-pTerm =
+pTerm :: Context -> Parser Term
+pTerm ctx =
         makeExprParser
                 ( choice
-                        [ pTmAbs
-                        , pTmIf
+                        [ pTmAbs ctx
+                        , pTmIf ctx
                         , TmTrue <$ string "true"
                         , TmFalse <$ string "false"
-                        , parens $ lexeme pTerm
-                        , pTmVar
+                        , parens $ lexeme (pTerm ctx)
+                        , pTmVar ctx
                         ]
                 )
                 [[InfixL $ TmApp <$ symbol " "]]
-                <?> "`term`"
+                <?> "`Term`"
 
-pTmVar :: Parser Term
-pTmVar = do
+pTmVar :: Context -> Parser Term
+pTmVar ctx = do
         x <- pLCID
-        ctx <- get
         idx <- getVarIndex x ctx
         return $ TmVar idx (length ctx)
 
-pTmAbs :: Parser Term
-pTmAbs = do
+pTmAbs :: Context -> Parser Term
+pTmAbs ctx = do
         _ <- symbol "\\"
         x <- lexeme pLCID
         _ <- symbol ":"
         tyT1 <- lexeme pTy
         _ <- symbol "."
-        addbinding x NameBind
-        t2 <- pTerm
+        let ctx' = addname x ctx
+        t2 <- pTerm ctx'
         return $ TmAbs x tyT1 t2
 
-pTmIf :: Parser Term
-pTmIf = TmIf <$> (symbol "if" *> lexeme pTerm) <*> (symbol "then" *> lexeme pTerm) <*> (symbol "else" *> pTerm)
+pTmIf :: Context -> Parser Term
+pTmIf ctx = TmIf <$> (symbol "if" *> pTerm ctx) <*> (symbol "then" *> lexeme (pTerm ctx)) <*> (symbol "else" *> pTerm ctx)
 
 pTy :: Parser Ty
-pTy = makeExprParser (TyBool <$ string "Bool") [[InfixL $ TyArr <$ symbol "->"]] <?> "`Type`"
+pTy = makeExprParser (TyBool <$ string "Bool") [[InfixR $ TyArr <$ symbol "->"]] <?> "`Type`"
 
-pCommand :: Parser Command
+pCommand :: StateT Context Parser Command
 pCommand =
         try
                 ( do
-                        x <- pLCID
-                        _ <- symbol ":"
-                        ty <- pTy
-                        addbinding x NameBind
+                        x <- lift pLCID
+                        _ <- lift $ symbol ":"
+                        ty <- lift pTy
+                        modify $ \ctx -> addname x ctx
                         return $ Bind x (VarBind ty)
                 )
-                <|> Eval <$> evalCT pTerm
+                <|> ( do
+                        ctx <- get
+                        t <- lift $ pTerm ctx
+                        return $ Eval t
+                    )
 
 pCommands :: String -> Either (ParseErrorBundle Text Void) [Command]
-pCommands input = parse (evalStateT (lexeme pCommand `endBy` symbol ";") emptyContext <* eof) "" (pack input)
+pCommands input = parse (evalStateT (pCommand `endBy` lift (symbol ";")) emptyContext <* eof) "" (pack input)
 
 prettyError :: ParseErrorBundle Text Void -> String
 prettyError = errorBundlePretty

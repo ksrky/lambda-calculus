@@ -1,1 +1,3 @@
-true;
+f:Bool->Bool->Bool;
+a:Bool;
+(\x:Bool.f x a) true;
