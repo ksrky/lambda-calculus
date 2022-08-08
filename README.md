@@ -2,9 +2,18 @@
 
 Implementation of Types and Programming Languages written by Benjamin C. Pierce
 
-## [Untyped](https://github.com/ksrky/lambda-calculus/tree/master/src/untyped)
+## [untyped](https://github.com/ksrky/lambda-calculus/tree/master/src/untyped)
 
 untyped lambda calculus
+
+### Syntax
+
+```
+t ::=                       :terms
+      x                     variable
+      λx.t                  abstraction
+      t t                   application
+```
 
 ### Reference
 
@@ -12,7 +21,22 @@ untyped lambda calculus
 
 ## [typed](https://github.com/ksrky/lambda-calculus/tree/master/src/typed)
 
-$\lambda_{\rightarrow}$, simply typed lambda calculus
+$\lambda_{\rightarrow}$: simply typed lambda calculus / Propositional logic
+
+### Syntax
+
+```
+t ::=                       :terms
+      x:T                   variable
+      λx.t                  abstraction
+      t t                   application
+      true                  constant true
+      false                 constant false
+
+T ::=                       :types
+      Bool                  type of booleans
+      T -> T                type of functions
+```
 
 ### Reference
 
@@ -20,7 +44,23 @@ $\lambda_{\rightarrow}$, simply typed lambda calculus
 
 ## [systemf](https://github.com/ksrky/lambda-calculus/tree/master/src/systemf)
 
-$\lambda 2$, System F (`typed`+ parametric polymophism)
+$\lambda 2$: System F (`typed`+ parametric polymophism) / Second-order propositional logic
+
+### Syntax
+
+```
+t ::=                       :terms
+      x:T                   variable
+      λx.t                  abstraction
+      t t                   application
+      λX.t                  type abstraction
+      t [T]                 type application
+
+T ::=                       :types
+      X                     type variable
+      T -> T                type of functions
+      ∀X.T                  universal type
+```
 
 ### Reference
 
@@ -28,7 +68,29 @@ $\lambda 2$, System F (`typed`+ parametric polymophism)
 
 ## [fomega](https://github.com/ksrky/lambda-calculus/tree/master/src/fomega)
 
-$\lambda \omega$, System Fω (`systemf`+ type operators)
+$\lambda \omega$, System $\mathrm{F_{\omega}}$ (`systemf`+ type operators) / Higher-order propositional logic
+
+### Syntax
+
+```
+t ::=                       :terms
+      x:T                   variable
+      λx.t                  abstraction
+      t t                   application
+      λX::K.t               type abstraction
+      t [T]                 type application
+
+T ::=                       :types
+      X                     type variable
+      T -> T                type of functions
+      ∀X::K.T               universal type
+      λX::K.T               operator abstraction
+      T T                   operator application
+
+K ::=                       :kinds
+      *                     kind of proper types
+      K => K                kind of operators
+```
 
 ### Reference
 
@@ -36,8 +98,29 @@ $\lambda \omega$, System Fω (`systemf`+ type operators)
 
 ## [lambdapi](https://github.com/ksrky/lambda-calculus/tree/master/src/lambdapi)
 
-$\lambda \Pi$, System Fω (`typed`+ pi type)
+$\lambda \Pi$, Lambda Pi (`typed`+ pi type) / First-order predicate logic
+
+```
+t ::=                       :terms
+      x:T                   variable
+      λx.t                  abstraction
+      t t                   application
+      *                     type of types
+      ∀x:t.t                universal type
+```
 
 ### Reference
 
 - Andres Löh, Conor McBride, and Wouter Swierstra. 2010. A Tutorial Implementation of a Dependently Typed Lambda Calculus. Fundam. Inf. 102, 2 (April 2010), 177–207.
+
+## lambdapi2
+
+$\lambda \Pi 2$, Lambda Pi 2 (`systemf` + pi type) / Second-order predicate logic
+
+not yet
+
+## coc
+
+$\lambda \mathrm{C}$, Calculus of construction (`fomega` + pi type) / Higher-order predicate logic
+
+not yet
