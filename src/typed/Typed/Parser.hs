@@ -118,7 +118,7 @@ pCommand =
                 <|> Eval <$> evalCT pTerm
 
 pCommands :: String -> Either (ParseErrorBundle Text Void) [Command]
-pCommands input = parse (evalStateT (pCommand `endBy` symbol ";") emptyContext <* eof) "" (pack input)
+pCommands input = parse (evalStateT (lexeme pCommand `endBy` symbol ";") emptyContext <* eof) "" (pack input)
 
 prettyError :: ParseErrorBundle Text Void -> String
 prettyError = errorBundlePretty

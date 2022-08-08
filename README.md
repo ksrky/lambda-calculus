@@ -1,17 +1,17 @@
 # Lambda calculus
 
-Implementation of Types and Programming Languages written by Benjamin C. Pierce
+Haskell implementation of Types and Programming Languages written by Benjamin C. Pierce
 
 ## [untyped](https://github.com/ksrky/lambda-calculus/tree/master/src/untyped)
 
-untyped lambda calculus
+Untyped lambda calculus
 
 ### Syntax
 
 ```
 t ::=                       :terms
       x                     variable
-      λx.t                  abstraction
+      \x.t                  abstraction
       t t                   application
 ```
 
@@ -21,21 +21,21 @@ t ::=                       :terms
 
 ## [typed](https://github.com/ksrky/lambda-calculus/tree/master/src/typed)
 
-$\lambda_{\rightarrow}$: simply typed lambda calculus / Propositional logic
+$\lambda_{\rightarrow}$: Simply typed lambda calculus / Propositional logic
 
 ### Syntax
 
 ```
 t ::=                       :terms
-      x:T                   variable
-      λx.t                  abstraction
+      x                     variable
+      \x:T.t                abstraction
       t t                   application
       true                  constant true
       false                 constant false
 
 T ::=                       :types
       Bool                  type of booleans
-      T -> T                type of functions
+      T->T                  type of functions
 ```
 
 ### Reference
@@ -50,16 +50,16 @@ $\lambda 2$: System F (`typed`+ parametric polymophism) / Second-order propositi
 
 ```
 t ::=                       :terms
-      x:T                   variable
-      λx.t                  abstraction
+      x                     variable
+      \x:T.t                abstraction
       t t                   application
-      λX.t                  type abstraction
+      \X.t                  type abstraction
       t [T]                 type application
 
 T ::=                       :types
       X                     type variable
-      T -> T                type of functions
-      ∀X.T                  universal type
+      T->T                  type of functions
+      forall X.T            universal type
 ```
 
 ### Reference
@@ -74,22 +74,22 @@ $\lambda \omega$, System $\mathrm{F_{\omega}}$ (`systemf`+ type operators) / Hig
 
 ```
 t ::=                       :terms
-      x:T                   variable
-      λx.t                  abstraction
+      x                     variable
+      \x:T.t                abstraction
       t t                   application
-      λX::K.t               type abstraction
+      \X:K.t                type abstraction
       t [T]                 type application
 
 T ::=                       :types
       X                     type variable
-      T -> T                type of functions
-      ∀X::K.T               universal type
-      λX::K.T               operator abstraction
+      T->T                  type of functions
+      forall X:K.T          universal type
+      \X:K.T                operator abstraction
       T T                   operator application
 
 K ::=                       :kinds
       *                     kind of proper types
-      K => K                kind of operators
+      K->K                  kind of operators
 ```
 
 ### Reference
@@ -98,16 +98,20 @@ K ::=                       :kinds
 
 ## [lambdapi](https://github.com/ksrky/lambda-calculus/tree/master/src/lambdapi)
 
-$\lambda \Pi$, Lambda Pi (`typed`+ pi type) / First-order predicate logic
+$\lambda \Pi$, Lambda Pi (`typed`+ dependent type) / First-order predicate logic
+
+### Syntax
 
 ```
 t ::=                       :terms
-      x:T                   variable
-      λx.t                  abstraction
+      x                     variable
+      \x:t.t                abstraction
       t t                   application
       *                     type of types
-      ∀x:t.t                universal type
+      forall x:t.t        　dependent product type
 ```
+
+note: Quantification of a variable is limited to the term level.
 
 ### Reference
 
@@ -117,10 +121,34 @@ t ::=                       :terms
 
 $\lambda \Pi 2$, Lambda Pi 2 (`systemf` + pi type) / Second-order predicate logic
 
+### Syntax
+
+```
+t ::=                       :terms
+      x                     variable
+      \x:t.t                abstraction
+      t t                   application
+      *                     type of types
+      forall x:t.t          dependent product type
+```
+
+note: Quantification of a variable is limited to the type level.
+
 not yet
 
 ## coc
 
 $\lambda \mathrm{C}$, Calculus of construction (`fomega` + pi type) / Higher-order predicate logic
+
+### Syntax
+
+```
+t ::=                       :terms
+      x                     variable
+      \x:t.t                abstraction
+      t t                   application
+      *                     type of types
+      forall x:t.t          dependent product type
+```
 
 not yet
