@@ -36,6 +36,7 @@ library
     , megaparsec
     , mtl
     , parser-combinators
+    , safe-exceptions
     , text
   default-language: Haskell2010
 
@@ -58,6 +59,7 @@ executable fomega
     , megaparsec
     , mtl
     , parser-combinators
+    , safe-exceptions
     , text
   default-language: Haskell2010
 
@@ -80,6 +82,30 @@ executable lambda-calculus-exe
     , megaparsec
     , mtl
     , parser-combinators
+    , safe-exceptions
+    , text
+  default-language: Haskell2010
+
+executable lambdapi
+  main-is: Main.hs
+  other-modules:
+      LambdaPi.Evaluator
+      LambdaPi.Parser
+      LambdaPi.Syntax
+      Paths_lambda_calculus
+  hs-source-dirs:
+      src/lambdapi
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , directory
+    , haskeline
+    , hspec
+    , lambda-calculus
+    , megaparsec
+    , mtl
+    , parser-combinators
+    , safe-exceptions
     , text
   default-language: Haskell2010
 
@@ -102,6 +128,7 @@ executable systemf
     , megaparsec
     , mtl
     , parser-combinators
+    , safe-exceptions
     , text
   default-language: Haskell2010
 
@@ -124,6 +151,7 @@ executable typed
     , megaparsec
     , mtl
     , parser-combinators
+    , safe-exceptions
     , text
   default-language: Haskell2010
 
@@ -146,6 +174,7 @@ executable untyped
     , megaparsec
     , mtl
     , parser-combinators
+    , safe-exceptions
     , text
   default-language: Haskell2010
 
@@ -167,6 +196,7 @@ test-suite typed-test
     , megaparsec
     , mtl
     , parser-combinators
+    , safe-exceptions
     , text
   default-language: Haskell2010
 
@@ -188,5 +218,6 @@ test-suite untyped-test
     , megaparsec
     , mtl
     , parser-combinators
+    , safe-exceptions
     , text
   default-language: Haskell2010

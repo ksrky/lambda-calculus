@@ -1,9 +1,9 @@
 module Typed.Evaluator where
 
-import Typed.Syntax (
-        Term (TmAbs, TmApp, TmFalse, TmIf, TmTrue),
-        termSubstTop,
- )
+import Typed.Syntax
+
+import Control.Exception.Safe
+import Control.Monad.State
 
 isval :: Term -> Bool
 isval t = case t of
@@ -30,3 +30,34 @@ eval t = maybe t eval (eval1 t)
                         t1' <- eval1 t1
                         return $ TmIf t1' t2 t3
                 _ -> Nothing
+
+typeof :: MonadThrow m => Term -> CT m Ty
+typeof t = case t of
+        TmVar i _ -> do
+                ctx <- get
+                getTypeFromContext ctx i
+        TmAbs x tyT1 t2 -> do
+                addbinding x (VarBind tyT1)
+                tyT2 <- typeof t2
+                return $ TyArr tyT1 tyT2
+        TmApp t1 t2 -> do
+                tyT1 <- typeof t1
+                tyT2 <- typeof t2
+                case tyT1 of
+                        TyArr tyT11 tyT12 -> do
+                                tyeqv tyT2 tyT11
+                                return tyT12
+                        _ -> throwString "arrow type expected"
+        TmTrue -> return TyBool
+        TmFalse -> return TyBool
+        TmIf t1 t2 t3 -> do
+                typeof t1 >>= tyeqv TyBool
+                tyT2 <- typeof t2
+                typeof t3 >>= tyeqv tyT2
+                return tyT2
+
+tyeqv :: MonadThrow m => Ty -> Ty -> m ()
+tyeqv tyS tyT =
+        if tyS == tyT
+                then return ()
+                else throwString "type mismatch"
