@@ -1,10 +1,9 @@
 module FOmega.Evaluator where
 
-import FOmega.Syntax (
-        Term (TmAbs, TmApp, TmTAbs, TmTApp),
-        termSubstTop,
-        tytermSubstTop,
- )
+import FOmega.Syntax
+
+import Control.Exception.Safe
+import Control.Monad.State
 
 isval :: Term -> Bool
 isval t = case t of
@@ -12,20 +11,57 @@ isval t = case t of
         TmTAbs{} -> True
         _ -> False
 
-eval :: Term -> Term
-eval t = maybe t eval (eval1 t)
+eval :: Context -> Term -> Term
+eval ctx t = maybe t (eval ctx) (eval1 t)
+    where
+        eval1 :: Term -> Maybe Term
+        eval1 t = case t of
+                TmVar i _ -> case getbinding ctx i of
+                        TmAbbBind t _ -> Just t
+                        _ -> Nothing
+                TmApp (TmAbs x ty t12) v2 | isval v2 -> return $ termSubstTop v2 t12
+                TmApp v1 t2 | isval v1 -> do
+                        t2' <- eval1 t2
+                        return $ TmApp v1 t2'
+                TmApp t1 t2 -> do
+                        t1' <- eval1 t1
+                        return $ TmApp t1' t2
+                TmTApp (TmTAbs x _ t11) tyT2 -> return $ tytermSubstTop tyT2 t11
+                TmTApp t1 tyT2 -> do
+                        t1' <- eval1 t1
+                        return $ TmTApp t1' tyT2
+                _ -> Nothing
 
-eval1 :: Term -> Maybe Term
-eval1 t = case t of
-        TmApp (TmAbs x ty t12) v2 | isval v2 -> return $ termSubstTop v2 t12
-        TmApp v1 t2 | isval v1 -> do
-                t2' <- eval1 t2
-                return $ TmApp v1 t2'
+typeof :: MonadThrow m => Term -> CT m Ty
+typeof t = case t of
+        TmVar i _ -> do
+                ctx <- get
+                getTypeFromContext ctx i
+        TmAbs x tyT1 t2 -> do
+                addbinding x (VarBind tyT1)
+                tyT2 <- typeof t2
+                return $ TyArr tyT1 tyT2
         TmApp t1 t2 -> do
-                t1' <- eval1 t1
-                return $ TmApp t1' t2
-        TmTApp (TmTAbs x _ t11) tyT2 -> return $ tytermSubstTop tyT2 t11
+                tyT1 <- evalCT $ typeof t1
+                tyT2 <- evalCT $ typeof t2
+                case tyT1 of
+                        TyArr tyT11 tyT12 -> do
+                                ctx <- get
+                                tyeqv ctx tyT2 tyT11
+                                return tyT12
+                        _ -> throwString "arrow type expected"
+        TmTAbs tyX knK1 t2 -> do
+                addbinding tyX (TyVarBind knK1)
+                tyT2 <- typeof t2
+                return $ TyAll tyX knK1 tyT2
         TmTApp t1 tyT2 -> do
-                t1' <- eval1 t1
-                return $ TmTApp t1' tyT2
-        _ -> Nothing
+                tyT1 <- typeof t1
+                case tyT1 of
+                        TyAll _ _ tyT12 -> return $ typeSubstTop tyT2 tyT12
+                        _ -> throwString "universal type expected"
+
+tyeqv :: MonadThrow m => Context -> Ty -> Ty -> m ()
+tyeqv ctx tyS tyT =
+        if tyS == tyT
+                then return ()
+                else throwString $ "type mismatch: " ++ printty ctx tyS ++ ", " ++ printty ctx tyT

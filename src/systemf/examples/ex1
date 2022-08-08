@@ -1,1 +1,1 @@
-(\X. \x : X. x) [forall Y . Y]
+(\X. \x : X. x) [forall Y . Y];

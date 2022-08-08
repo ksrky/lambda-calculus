@@ -60,4 +60,4 @@ tyeqv :: MonadThrow m => Ty -> Ty -> m ()
 tyeqv tyS tyT =
         if tyS == tyT
                 then return ()
-                else throwString "type mismatch"
+                else throwString $ "type mismatch: " ++ show tyS ++ ", " ++ show tyT

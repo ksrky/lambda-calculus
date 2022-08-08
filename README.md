@@ -68,7 +68,7 @@ T ::=                       :types
 
 ## [fomega](https://github.com/ksrky/lambda-calculus/tree/master/src/fomega)
 
-$\lambda \omega$, System $\mathrm{F_{\omega}}$ (`systemf`+ type operators) / Higher-order propositional logic
+$\lambda \omega$: System $\mathrm{F_{\omega}}$ (`systemf`+ type operators) / Higher-order propositional logic
 
 ### Syntax
 
@@ -98,7 +98,7 @@ K ::=                       :kinds
 
 ## [lambdapi](https://github.com/ksrky/lambda-calculus/tree/master/src/lambdapi)
 
-$\lambda \Pi$, Lambda Pi (`typed`+ dependent type) / First-order predicate logic
+$\lambda \Pi$: Lambda Pi (`typed`+ dependent type) / First-order predicate logic
 
 ### Syntax
 
@@ -119,7 +119,7 @@ note: Quantification of a variable is limited to the term level.
 
 ## lambdapi2
 
-$\lambda \Pi 2$, Lambda Pi 2 (`systemf` + pi type) / Second-order predicate logic
+$\lambda \Pi 2$: Lambda Pi2 / Second-order predicate logic
 
 ### Syntax
 
@@ -138,7 +138,7 @@ not yet
 
 ## coc
 
-$\lambda \mathrm{C}$, Calculus of construction (`fomega` + pi type) / Higher-order predicate logic
+$\lambda \mathrm{C}$: Calculus of Construction / Higher-order predicate logic
 
 ### Syntax
 

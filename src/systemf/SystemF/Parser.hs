@@ -2,18 +2,46 @@
 
 module SystemF.Parser where
 
-import SystemF.Syntax
+import SystemF.Syntax (
+        Binding (..),
+        Command (..),
+        Context,
+        Term (..),
+        Ty (..),
+        addbinding,
+        emptyContext,
+        evalCT,
+        getVarIndex,
+ )
 
 import Control.Monad.Combinators.Expr (
         Operator (InfixL, Postfix, Prefix),
         makeExprParser,
  )
-import Control.Monad.State
+import Control.Monad.State (MonadState (get), StateT, evalStateT)
 import Data.List (elemIndex)
 import Data.Text (Text, pack)
 import Data.Void (Void)
-import Text.Megaparsec
-import Text.Megaparsec.Char
+import Text.Megaparsec (
+        MonadParsec (eof, try),
+        ParseErrorBundle,
+        Parsec,
+        between,
+        choice,
+        endBy,
+        errorBundlePretty,
+        many,
+        parse,
+        (<?>),
+        (<|>),
+ )
+import Text.Megaparsec.Char (
+        alphaNumChar,
+        lowerChar,
+        space1,
+        string,
+        upperChar,
+ )
 import qualified Text.Megaparsec.Char.Lexer as L
 
 type Parser = StateT Context (Parsec Void Text)
@@ -31,11 +59,11 @@ lexeme = L.lexeme sc
 symbol :: Text -> Parser Text
 symbol = L.symbol sc
 
-pTmIdent :: Parser String
-pTmIdent = (:) <$> lowerChar <*> many alphaNumChar <?> "`identifier`"
+pLCID :: Parser String
+pLCID = (:) <$> lowerChar <*> many alphaNumChar <?> "`LCID`"
 
-pTyIdent :: Parser String
-pTyIdent = (:) <$> upperChar <*> many alphaNumChar <?> "`identifier`"
+pUCID :: Parser String
+pUCID = (:) <$> upperChar <*> many alphaNumChar <?> "`UCID`"
 
 parens :: Parser a -> Parser a
 parens = between (symbol "(") (string ")")
@@ -45,78 +73,94 @@ pTerm =
         makeExprParser
                 ( choice
                         [ try pTmTApp
-                        , try (lexeme pTmAbs)
-                        , lexeme pTmTAbs
-                        , parens pTerm
+                        , try pTmAbs
+                        , pTmTAbs
+                        , parens $ lexeme pTerm
                         , pTmVar
                         ]
                 )
-                [[assocl " " TmApp]]
-                <?> "`term`"
-    where
-        assocl :: Text -> (Term -> Term -> Term) -> Operator Parser Term
-        assocl name f = InfixL (f <$ symbol name)
+                [[InfixL $ TmApp <$ symbol " "]]
+                <?> "`Term`"
+
+pTmVar :: Parser Term
+pTmVar = do
+        x <- pLCID
+        ctx <- get
+        idx <- getVarIndex x ctx
+        return $ TmVar idx (length ctx)
 
 pTmAbs :: Parser Term
 pTmAbs = do
         _ <- symbol "\\"
-        x <- lexeme pTmIdent
+        x <- lexeme pLCID
         _ <- symbol ":"
-        ty <- lexeme pTy
+        tyT1 <- evalCT $ lexeme pTy
         _ <- symbol "."
-        ctx <- get
         addbinding x NameBind
-        t1 <- pTerm
-        put ctx
-        return $ TmAbs x ty t1
+        t2 <- pTerm
+        return $ TmAbs x tyT1 t2
 
-pTmVar :: Parser Term
-pTmVar = do
-        x <- pTmIdent
-        ctx <- get
-        let idx = getVarIndex x ctx
-        return $ TmVar idx (length ctx)
+pTmTAbs :: Parser Term
+pTmTAbs = do
+        _ <- symbol "\\"
+        tyX <- lexeme pUCID
+        _ <- symbol "."
+        addbinding tyX NameBind
+        t1 <- pTerm
+        return $ TmTAbs tyX t1
+
+pTmTApp :: Parser Term
+pTmTApp = TmTApp <$> lexeme (evalCT $ parens $ lexeme pTerm) <*> between (symbol "[") (string "]") (lexeme pTy)
 
 pTy :: Parser Ty
-pTy = makeExprParser (choice [pTyAll, lexeme pTyVar]) [[assocr "->" TyArr]] <?> "`type`"
-    where
-        assocr :: Text -> (Ty -> Ty -> Ty) -> Operator Parser Ty
-        assocr name f = InfixL (f <$ symbol name)
+pTy = makeExprParser (choice [try pTyAll, pTyVar]) [[InfixL $ TyArr <$ symbol "->"]] <?> "`Type`"
 
 pTyVar :: Parser Ty
 pTyVar = do
-        x <- pTyIdent
+        x <- pUCID
         ctx <- get
-        let idx = getVarIndex x ctx
+        idx <- getVarIndex x ctx
         return $ TyVar idx (length ctx)
 
 pTyAll :: Parser Ty
 pTyAll = do
         _ <- symbol "forall"
-        x <- lexeme pTyIdent
+        x <- lexeme pUCID
         _ <- symbol "."
-        ctx <- get
         addbinding x NameBind
-        ty <- lexeme pTy
-        put ctx
+        ty <- pTy
         return $ TyAll x ty
 
-pTmTAbs :: Parser Term
-pTmTAbs = do
-        _ <- symbol "\\"
-        x <- lexeme pTyIdent
-        _ <- symbol "."
-        ctx <- get
-        addbinding x NameBind
-        t1 <- pTerm
-        put ctx
-        return $ TmTAbs x t1
+pCommand :: Parser Command
+pCommand =
+        try
+                ( do
+                        x <- pLCID
+                        bind <- pBinder
+                        addbinding x NameBind
+                        return $ Bind x bind
+                )
+                <|> try
+                        ( do
+                                x <- pUCID
+                                bind <- pTyBinder
+                                addbinding x NameBind
+                                return $ Bind x bind
+                        )
+                <|> Eval <$> evalCT pTerm
 
-pTmTApp :: Parser Term
-pTmTApp = TmTApp <$> lexeme (parens pTerm) <*> between (symbol "[") (string "]") pTy
+pBinder :: Parser Binding
+pBinder =
+        VarBind <$> (symbol ":" *> pTy)
+                <|> TmAbbBind <$> (symbol "=" *> pTerm) <*> pure Nothing
 
-parseTerm :: String -> Either (ParseErrorBundle Text Void) Term
-parseTerm input = parse ((pTerm `evalStateT` []) <* eof) "" (pack input)
+pTyBinder :: Parser Binding
+pTyBinder =
+        TyAbbBind <$> (symbol "=" *> pTy)
+                <|> pure TyVarBind
+
+pCommands :: String -> Either (ParseErrorBundle Text Void) [Command]
+pCommands input = parse (evalStateT (lexeme pCommand `endBy` symbol ";") emptyContext <* eof) "" (pack input)
 
 prettyError :: ParseErrorBundle Text Void -> String
 prettyError = errorBundlePretty

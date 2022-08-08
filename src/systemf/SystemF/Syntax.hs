@@ -3,13 +3,8 @@
 
 module SystemF.Syntax where
 
-import Control.Monad.State (
-        MonadState (get, state),
-        State,
-        StateT,
-        modify,
-        runState,
- )
+import Control.Exception.Safe
+import Control.Monad.State
 import Data.List (elemIndex)
 
 ----------------------------------------------------------------
@@ -29,7 +24,18 @@ data Ty
         | TyAll String Ty
         deriving (Eq, Show)
 
-data Binding = NameBind | VarBind Ty | TyVarBind
+data Binding
+        = NameBind
+        | VarBind Ty
+        | TyVarBind
+        | TmAbbBind Term (Maybe Ty)
+        | TyAbbBind Ty
+        deriving (Show)
+
+data Command
+        = Bind String Binding
+        | Eval Term
+        deriving (Show)
 
 ----------------------------------------------------------------
 -- Context
@@ -39,7 +45,7 @@ type Context = [(String, Binding)]
 emptyContext :: Context
 emptyContext = []
 
-addbinding :: Monad m => String -> Binding -> StateT Context m ()
+addbinding :: Monad m => String -> Binding -> CT m ()
 addbinding x bind = modify $ \ctx -> (x, bind) : ctx
 
 pickfreshname :: String -> Context -> (String, Context)
@@ -50,15 +56,35 @@ pickfreshname x ctx = case lookup x ctx of
 index2name :: Context -> Int -> String
 index2name ctx x = fst (ctx !! x)
 
-getVarIndex :: String -> Context -> Int
-getVarIndex var ctx = case elemIndex var (map fst ctx) of
-        Just i -> i
-        Nothing -> error $ "Unbound variable name: '" ++ var ++ "'"
+getbinding :: Context -> Int -> Binding
+getbinding ctx i = bindingShift (i + 1) (snd $ ctx !! i)
 
-getTypeFromContext :: Context -> Int -> Ty
+bindingShift :: Int -> Binding -> Binding
+bindingShift d bind = case bind of
+        NameBind -> NameBind
+        VarBind tyT -> VarBind (typeShift d tyT)
+        TyVarBind -> TyVarBind
+        TyAbbBind tyT -> TyAbbBind (typeShift d tyT)
+        TmAbbBind t tyT_opt -> TmAbbBind (termShift d t) (typeShift d <$> tyT_opt)
+
+getVarIndex :: MonadFail m => String -> Context -> m Int
+getVarIndex var ctx = case elemIndex var (map fst ctx) of
+        Just i -> return i
+        Nothing -> fail $ "Unbound variable name: '" ++ var ++ "'"
+
+getTypeFromContext :: MonadThrow m => Context -> Int -> m Ty
 getTypeFromContext ctx i = case ctx !! i of
-        (_, VarBind tyT) -> tyT
-        _ -> error $ "getTypeFromContext: Wrong kind of binding for variable " ++ index2name ctx i
+        (_, VarBind tyT) -> return tyT
+        _ -> throwString $ "Wrong kind of binding for variable " ++ index2name ctx i
+
+type CT m = StateT Context m
+
+evalCT :: Monad m => CT m a -> CT m a
+evalCT f = do
+        ctx <- get
+        v <- f
+        put ctx
+        return v
 
 ----------------------------------------------------------------
 -- Type
@@ -168,4 +194,4 @@ printty ctx ty = case ty of
         TyArr tyT1 tyT2 -> "(" ++ printty ctx tyT1 ++ " -> " ++ printty ctx tyT2 ++ ")"
         TyAll tyX tyT2 ->
                 let (tyX', ctx') = pickfreshname tyX ctx
-                 in "(∀" ++ tyX ++ ". " ++ printty ctx' tyT2 ++ ")"
+                 in "(∀" ++ tyX' ++ ". " ++ printty ctx' tyT2 ++ ")"

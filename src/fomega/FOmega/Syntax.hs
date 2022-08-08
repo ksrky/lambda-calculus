@@ -1,12 +1,7 @@
 module FOmega.Syntax where
 
-import Control.Monad.State (
-        MonadState (state),
-        State,
-        StateT,
-        modify,
-        runState,
- )
+import Control.Exception.Safe
+import Control.Monad.State
 import Data.List (elemIndex)
 
 ----------------------------------------------------------------
@@ -36,6 +31,12 @@ data Binding
         | TyVarBind Kind
         | TyAbbBind Ty (Maybe Kind)
         | TmAbbBind Term (Maybe Ty)
+        deriving (Show)
+
+data Command
+        = Bind String Binding
+        | Eval Term
+        deriving (Show)
 
 ----------------------------------------------------------------
 -- Context
@@ -45,7 +46,7 @@ type Context = [(String, Binding)]
 emptyContext :: Context
 emptyContext = []
 
-addbinding :: Monad m => String -> Binding -> StateT Context m ()
+addbinding :: Monad m => String -> Binding -> CT m ()
 addbinding x bind = modify $ \ctx -> (x, bind) : ctx
 
 pickfreshname :: String -> Context -> (String, Context)
@@ -56,10 +57,15 @@ pickfreshname x ctx = case lookup x ctx of
 index2name :: Context -> Int -> String
 index2name ctx x = fst (ctx !! x)
 
-getVarIndex :: String -> Context -> Int
+getVarIndex :: MonadFail m => String -> Context -> m Int
 getVarIndex var ctx = case elemIndex var (map fst ctx) of
-        Just i -> i
-        Nothing -> error $ "Unbound variable name: '" ++ var ++ "'"
+        Just i -> return i
+        Nothing -> fail $ "Unbound variable name: '" ++ var ++ "'"
+
+getTypeFromContext :: MonadThrow m => Context -> Int -> m Ty
+getTypeFromContext ctx i = case ctx !! i of
+        (_, VarBind tyT) -> return tyT
+        _ -> throwString $ "Wrong kind of binding for variable " ++ index2name ctx i
 
 bindingshift :: Int -> Binding -> Binding
 bindingshift d bind = case bind of
@@ -79,12 +85,14 @@ getbinding ctx i =
                          in bindingshift (i + 1) bind
                 else error $ "Variable lookup failure: offset: " ++ show i ++ "ctx size: " ++ show (length ctx)
 
-getTypeFromContext :: Context -> Int -> Ty
-getTypeFromContext ctx i = case getbinding ctx i of
-        VarBind tyT -> tyT
-        TmAbbBind _ (Just tyT) -> tyT
-        TmAbbBind _ Nothing -> error $ "No type recorded for variable " ++ index2name ctx i
-        _ -> error $ "getTypeFromContext: Wrong kind of binding for variable " ++ index2name ctx i
+type CT m = StateT Context m
+
+evalCT :: Monad m => CT m a -> CT m a
+evalCT f = do
+        ctx <- get
+        v <- f
+        put ctx
+        return v
 
 ----------------------------------------------------------------
 -- Type
@@ -175,7 +183,7 @@ printtm ctx t = case t of
         TmApp t1 t2 -> "(" ++ printtm ctx t1 ++ " " ++ printtm ctx t2 ++ ")"
         TmTAbs tyX knK1 t2 ->
                 let (tyX', ctx') = pickfreshname tyX ctx
-                 in "(Λ" ++ tyX' ++ ":: " ++ printkn ctx knK1 ++ ". " ++ printtm ctx' t2 ++ ")"
+                 in "(Λ" ++ tyX' ++ ": " ++ printkn ctx knK1 ++ ". " ++ printtm ctx' t2 ++ ")"
         TmTApp t1 tyT2 -> "(" ++ printtm ctx t1 ++ " [" ++ printty ctx tyT2 ++ "]" ++ ")"
 
 printty :: Context -> Ty -> String

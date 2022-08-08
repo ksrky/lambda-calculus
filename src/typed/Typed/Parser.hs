@@ -70,16 +70,23 @@ pTerm :: Parser Term
 pTerm =
         makeExprParser
                 ( choice
-                        [ parens $ lexeme pTerm
-                        , pTmAbs
+                        [ pTmAbs
                         , pTmIf
                         , TmTrue <$ string "true"
                         , TmFalse <$ string "false"
+                        , parens $ lexeme pTerm
                         , pTmVar
                         ]
                 )
                 [[InfixL $ TmApp <$ symbol " "]]
                 <?> "`term`"
+
+pTmVar :: Parser Term
+pTmVar = do
+        x <- pLCID
+        ctx <- get
+        idx <- getVarIndex x ctx
+        return $ TmVar idx (length ctx)
 
 pTmAbs :: Parser Term
 pTmAbs = do
@@ -92,18 +99,11 @@ pTmAbs = do
         t2 <- pTerm
         return $ TmAbs x tyT1 t2
 
-pTy :: Parser Ty
-pTy = makeExprParser (TyBool <$ string "Bool") [[InfixL $ TyArr <$ symbol "->"]] <?> "`type`"
-
-pTmVar :: Parser Term
-pTmVar = do
-        x <- pLCID
-        ctx <- get
-        idx <- getVarIndex x ctx
-        return $ TmVar idx (length ctx)
-
 pTmIf :: Parser Term
 pTmIf = TmIf <$> (symbol "if" *> lexeme pTerm) <*> (symbol "then" *> lexeme pTerm) <*> (symbol "else" *> pTerm)
+
+pTy :: Parser Ty
+pTy = makeExprParser (TyBool <$ string "Bool") [[InfixL $ TyArr <$ symbol "->"]] <?> "`Type`"
 
 pCommand :: Parser Command
 pCommand =
