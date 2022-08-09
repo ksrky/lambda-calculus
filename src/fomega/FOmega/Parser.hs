@@ -3,23 +3,28 @@
 module FOmega.Parser where
 
 import FOmega.Syntax (
-        Binding (..),
+        Binding (TmAbbBind, TyAbbBind, TyVarBind, VarBind),
         Command (..),
         Context,
         Kind (..),
         Term (..),
         Ty (..),
-        addbinding,
+        addname,
         emptyContext,
-        evalCT,
         getVarIndex,
  )
 
 import Control.Monad.Combinators.Expr (
-        Operator (InfixL, InfixR, Postfix, Prefix),
+        Operator (InfixL, InfixR),
         makeExprParser,
  )
-import Control.Monad.State (MonadState (get), StateT, evalStateT)
+import Control.Monad.State (
+        MonadState (get),
+        MonadTrans (lift),
+        StateT,
+        evalStateT,
+        modify,
+ )
 import Data.List (elemIndex)
 import Data.Text (Text, pack)
 import Data.Void (Void)
@@ -36,10 +41,16 @@ import Text.Megaparsec (
         (<?>),
         (<|>),
  )
-import Text.Megaparsec.Char
+import Text.Megaparsec.Char (
+        alphaNumChar,
+        lowerChar,
+        space1,
+        string,
+        upperChar,
+ )
 import qualified Text.Megaparsec.Char.Lexer as L
 
-type Parser = StateT Context (Parsec Void Text)
+type Parser = Parsec Void Text
 
 sc :: Parser ()
 sc =
@@ -63,59 +74,58 @@ pUCID = (:) <$> upperChar <*> many alphaNumChar <?> "`UCID`"
 parens :: Parser a -> Parser a
 parens = between (symbol "(") (string ")")
 
-pTerm :: Parser Term
-pTerm =
+pTerm :: Context -> Parser Term
+pTerm ctx =
         makeExprParser
                 ( choice
-                        [ try pTmTApp
-                        , try pTmAbs
-                        , pTmTAbs
-                        , parens $ lexeme pTerm
-                        , pTmVar
+                        [ try $ pTmTApp ctx
+                        , try $ pTmAbs ctx
+                        , pTmTAbs ctx
+                        , parens $ lexeme $ pTerm ctx
+                        , pTmVar ctx
                         ]
                 )
                 [[InfixL $ TmApp <$ symbol " "]]
                 <?> "`Term`"
 
-pTmVar :: Parser Term
-pTmVar = do
+pTmVar :: Context -> Parser Term
+pTmVar ctx = do
         x <- pLCID
-        ctx <- get
         idx <- getVarIndex x ctx
         return $ TmVar idx (length ctx)
 
-pTmAbs :: Parser Term
-pTmAbs = do
+pTmAbs :: Context -> Parser Term
+pTmAbs ctx = do
         _ <- symbol "\\"
         x <- lexeme pLCID
         _ <- symbol ":"
-        tyT1 <- evalCT $ lexeme pTy
+        tyT1 <- lexeme $ pTy ctx
         _ <- symbol "."
-        addbinding x NameBind
-        t2 <- pTerm
+        let ctx' = addname x ctx
+        t2 <- pTerm ctx'
         return $ TmAbs x tyT1 t2
 
-pTmTAbs :: Parser Term
-pTmTAbs = do
+pTmTAbs :: Context -> Parser Term
+pTmTAbs ctx = do
         _ <- symbol "\\"
         tyX <- lexeme pUCID
         _ <- symbol ":"
         knK1 <- lexeme pKind
         _ <- symbol "."
-        addbinding tyX NameBind
-        t2 <- pTerm
+        let ctx' = addname tyX ctx
+        t2 <- pTerm ctx'
         return $ TmTAbs tyX knK1 t2
 
-pTmTApp :: Parser Term
-pTmTApp = TmTApp <$> lexeme (evalCT $ parens $ lexeme pTerm) <*> between (symbol "[") (string "]") (lexeme pTy)
+pTmTApp :: Context -> Parser Term
+pTmTApp ctx = TmTApp <$> lexeme (parens $ lexeme $ pTerm ctx) <*> between (symbol "[") (string "]") (lexeme $ pTy ctx)
 
-pTy :: Parser Ty
-pTy =
+pTy :: Context -> Parser Ty
+pTy ctx =
         makeExprParser
                 ( choice
-                        [ try pTyAll
-                        , parens $ lexeme pTy
-                        , pTyVar
+                        [ try $ pTyAll ctx
+                        , parens $ lexeme $ pTy ctx
+                        , pTyVar ctx
                         ]
                 )
                 [ [InfixL (TyApp <$ symbol " ")]
@@ -123,57 +133,62 @@ pTy =
                 ]
                 <?> "`Type`"
 
-pTyVar :: Parser Ty
-pTyVar = do
+pTyVar :: Context -> Parser Ty
+pTyVar ctx = do
         x <- pUCID
-        ctx <- get
         idx <- getVarIndex x ctx
         return $ TyVar idx (length ctx)
 
-pTyAll :: Parser Ty
-pTyAll = do
+pTyAll :: Context -> Parser Ty
+pTyAll ctx = do
         _ <- symbol "forall"
         x <- lexeme pUCID
         _ <- symbol "::"
         knK1 <- lexeme pKind
         _ <- symbol "."
-        addbinding x NameBind
-        tyT2 <- pTy
+        let ctx' = addname x ctx
+        tyT2 <- pTy ctx'
         return $ TyAll x knK1 tyT2
 
 pKind :: Parser Kind
 pKind = makeExprParser (choice [KnStar <$ symbol "*", parens pKind]) [[InfixL (KnArr <$ symbol "->")]] <?> "`Kind`"
 
-pCommand :: Parser Command
+pCommand :: StateT Context Parser Command
 pCommand =
         try
                 ( do
-                        x <- pLCID
-                        bind <- pBinder
-                        addbinding x NameBind
+                        x <- lift pLCID
+                        ctx <- get
+                        bind <- lift $ pBinder ctx
+                        modify $ \ctx -> addname x ctx
                         return $ Bind x bind
                 )
                 <|> try
                         ( do
-                                x <- pUCID
-                                bind <- pTyBinder
-                                addbinding x NameBind
+                                x <- lift pUCID
+                                ctx <- get
+                                bind <- lift $ pTyBinder ctx
+                                modify $ \ctx -> addname x ctx
                                 return $ Bind x bind
                         )
-                <|> Eval <$> evalCT pTerm
+                <|> ( do
+                        ctx <- get
+                        t <- lift $ pTerm ctx
+                        return $ Eval t
+                    )
 
-pBinder :: Parser Binding
-pBinder =
-        VarBind <$> (symbol ":" *> pTy)
-                <|> TmAbbBind <$> (symbol "=" *> pTerm) <*> pure Nothing
+pBinder :: Context -> Parser Binding
+pBinder ctx =
+        VarBind <$> (symbol ":" *> pTy ctx)
+                <|> TmAbbBind <$> (symbol "=" *> pTerm ctx) <*> pure Nothing
 
-pTyBinder :: Parser Binding
-pTyBinder =
+pTyBinder :: Context -> Parser Binding
+pTyBinder ctx =
         try
                 ( do
                         args <- pTyAbbArgs
                         _ <- symbol "="
-                        tyT <- pTy
+                        tyT <- pTy ctx
                         let tyT' = foldr (uncurry TyAbs) tyT args
                         return $ TyAbbBind tyT' Nothing
                 )
@@ -200,7 +215,7 @@ pTyAbbArgs =
                 <|> pure []
 
 pCommands :: String -> Either (ParseErrorBundle Text Void) [Command]
-pCommands input = parse (evalStateT (lexeme pCommand `endBy` symbol ";") emptyContext <* eof) "" (pack input)
+pCommands input = parse (evalStateT (pCommand `endBy` lift (symbol ";")) emptyContext <* eof) "" (pack input)
 
 prettyError :: ParseErrorBundle Text Void -> String
 prettyError = errorBundlePretty

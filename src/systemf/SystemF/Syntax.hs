@@ -3,8 +3,7 @@
 
 module SystemF.Syntax where
 
-import Control.Exception.Safe
-import Control.Monad.State
+import Control.Exception.Safe (MonadThrow, throwString)
 import Data.List (elemIndex)
 
 ----------------------------------------------------------------
@@ -45,8 +44,11 @@ type Context = [(String, Binding)]
 emptyContext :: Context
 emptyContext = []
 
-addbinding :: Monad m => String -> Binding -> CT m ()
-addbinding x bind = modify $ \ctx -> (x, bind) : ctx
+addbinding :: String -> Binding -> Context -> Context
+addbinding x bind ctx = (x, bind) : ctx
+
+addname :: String -> Context -> Context
+addname x ctx = (x, NameBind) : ctx
 
 pickfreshname :: String -> Context -> (String, Context)
 pickfreshname x ctx = case lookup x ctx of
@@ -56,9 +58,6 @@ pickfreshname x ctx = case lookup x ctx of
 index2name :: Context -> Int -> String
 index2name ctx x = fst (ctx !! x)
 
-getbinding :: Context -> Int -> Binding
-getbinding ctx i = bindingShift (i + 1) (snd $ ctx !! i)
-
 bindingShift :: Int -> Binding -> Binding
 bindingShift d bind = case bind of
         NameBind -> NameBind
@@ -67,24 +66,20 @@ bindingShift d bind = case bind of
         TyAbbBind tyT -> TyAbbBind (typeShift d tyT)
         TmAbbBind t tyT_opt -> TmAbbBind (termShift d t) (typeShift d <$> tyT_opt)
 
+getbinding :: Context -> Int -> Binding
+getbinding ctx i = bindingShift (i + 1) (snd $ ctx !! i)
+
+getTypeFromContext :: MonadThrow m => Context -> Int -> m Ty
+getTypeFromContext ctx i = case getbinding ctx i of
+        VarBind tyT -> return tyT
+        TmAbbBind _ (Just tyT) -> return tyT
+        TmAbbBind _ Nothing -> throwString $ "No type recorded for variable " ++ index2name ctx i
+        _ -> throwString $ "Wrong kind of binding for variable " ++ index2name ctx i
+
 getVarIndex :: MonadFail m => String -> Context -> m Int
 getVarIndex var ctx = case elemIndex var (map fst ctx) of
         Just i -> return i
         Nothing -> fail $ "Unbound variable name: '" ++ var ++ "'"
-
-getTypeFromContext :: MonadThrow m => Context -> Int -> m Ty
-getTypeFromContext ctx i = case ctx !! i of
-        (_, VarBind tyT) -> return tyT
-        _ -> throwString $ "Wrong kind of binding for variable " ++ index2name ctx i
-
-type CT m = StateT Context m
-
-evalCT :: Monad m => CT m a -> CT m a
-evalCT f = do
-        ctx <- get
-        v <- f
-        put ctx
-        return v
 
 ----------------------------------------------------------------
 -- Type

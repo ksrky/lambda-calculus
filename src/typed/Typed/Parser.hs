@@ -80,7 +80,7 @@ pTerm ctx =
                         , pTmIf ctx
                         , TmTrue <$ string "true"
                         , TmFalse <$ string "false"
-                        , parens $ lexeme (pTerm ctx)
+                        , parens $ lexeme $ pTerm ctx
                         , pTmVar ctx
                         ]
                 )

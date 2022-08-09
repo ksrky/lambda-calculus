@@ -1,7 +1,7 @@
 module FOmega.Syntax where
 
-import Control.Exception.Safe
-import Control.Monad.State
+import Control.Exception.Safe (MonadThrow, throwString)
+import Control.Monad.State (MonadState (get, put), StateT, modify)
 import Data.List (elemIndex)
 
 ----------------------------------------------------------------
@@ -12,9 +12,9 @@ data Kind = KnStar | KnArr Kind Kind deriving (Eq, Show)
 data Ty
         = TyVar Int Int
         | TyArr Ty Ty
+        | TyAll String Kind Ty
         | TyAbs String Kind Ty
         | TyApp Ty Ty
-        | TyAll String Kind Ty
         deriving (Eq, Show)
 
 data Term
@@ -46,8 +46,11 @@ type Context = [(String, Binding)]
 emptyContext :: Context
 emptyContext = []
 
-addbinding :: Monad m => String -> Binding -> CT m ()
-addbinding x bind = modify $ \ctx -> (x, bind) : ctx
+addbinding :: String -> Binding -> Context -> Context
+addbinding x bind ctx = (x, bind) : ctx
+
+addname :: String -> Context -> Context
+addname x ctx = (x, NameBind) : ctx
 
 pickfreshname :: String -> Context -> (String, Context)
 pickfreshname x ctx = case lookup x ctx of
@@ -57,42 +60,28 @@ pickfreshname x ctx = case lookup x ctx of
 index2name :: Context -> Int -> String
 index2name ctx x = fst (ctx !! x)
 
-getVarIndex :: MonadFail m => String -> Context -> m Int
-getVarIndex var ctx = case elemIndex var (map fst ctx) of
-        Just i -> return i
-        Nothing -> fail $ "Unbound variable name: '" ++ var ++ "'"
-
-getTypeFromContext :: MonadThrow m => Context -> Int -> m Ty
-getTypeFromContext ctx i = case ctx !! i of
-        (_, VarBind tyT) -> return tyT
-        _ -> throwString $ "Wrong kind of binding for variable " ++ index2name ctx i
-
-bindingshift :: Int -> Binding -> Binding
-bindingshift d bind = case bind of
+bindingShift :: Int -> Binding -> Binding
+bindingShift d bind = case bind of
         NameBind -> NameBind
         VarBind tyT -> VarBind (typeShift d tyT)
         TyVarBind knK -> TyVarBind knK
         TyAbbBind tyT opt -> TyAbbBind (typeShift d tyT) opt
-        TmAbbBind t tyT_opt ->
-                let tyT_opt' = typeShift d <$> tyT_opt
-                 in TmAbbBind (termShift d t) tyT_opt'
+        TmAbbBind t tyT_opt -> TmAbbBind (termShift d t) (typeShift d <$> tyT_opt)
 
 getbinding :: Context -> Int -> Binding
-getbinding ctx i =
-        if i < length ctx
-                then
-                        let (_, bind) = ctx !! i
-                         in bindingshift (i + 1) bind
-                else error $ "Variable lookup failure: offset: " ++ show i ++ "ctx size: " ++ show (length ctx)
+getbinding ctx i = bindingShift (i + 1) (snd $ ctx !! i)
 
-type CT m = StateT Context m
+getTypeFromContext :: MonadThrow m => Context -> Int -> m Ty
+getTypeFromContext ctx i = case getbinding ctx i of
+        VarBind tyT -> return tyT
+        TmAbbBind _ (Just tyT) -> return tyT
+        TmAbbBind _ Nothing -> throwString $ "No type recorded for variable " ++ index2name ctx i
+        _ -> throwString $ "Wrong kind of binding for variable " ++ index2name ctx i
 
-evalCT :: Monad m => CT m a -> CT m a
-evalCT f = do
-        ctx <- get
-        v <- f
-        put ctx
-        return v
+getVarIndex :: MonadFail m => String -> Context -> m Int
+getVarIndex var ctx = case elemIndex var (map fst ctx) of
+        Just i -> return i
+        Nothing -> fail $ "Unbound variable name: '" ++ var ++ "'"
 
 ----------------------------------------------------------------
 -- Type
@@ -183,7 +172,7 @@ printtm ctx t = case t of
         TmApp t1 t2 -> "(" ++ printtm ctx t1 ++ " " ++ printtm ctx t2 ++ ")"
         TmTAbs tyX knK1 t2 ->
                 let (tyX', ctx') = pickfreshname tyX ctx
-                 in "(Λ" ++ tyX' ++ ": " ++ printkn ctx knK1 ++ ". " ++ printtm ctx' t2 ++ ")"
+                 in "(Λ" ++ tyX' ++ ": " ++ printkn knK1 ++ ". " ++ printtm ctx' t2 ++ ")"
         TmTApp t1 tyT2 -> "(" ++ printtm ctx t1 ++ " [" ++ printty ctx tyT2 ++ "]" ++ ")"
 
 printty :: Context -> Ty -> String
@@ -191,17 +180,17 @@ printty ctx ty = case ty of
         TyVar x n ->
                 if length ctx == n
                         then index2name ctx x
-                        else "[bad index]"
+                        else "[bad index]" ++ show (length ctx) ++ show n
         TyArr tyT1 tyT2 -> "(" ++ printty ctx tyT1 ++ " -> " ++ printty ctx tyT2 ++ ")"
         TyAbs tyX knK1 tyT2 ->
                 let (tyX', ctx') = pickfreshname tyX ctx
-                 in "(λ" ++ tyX ++ ". " ++ printty ctx' tyT2 ++ ")"
+                 in "(λ" ++ tyX ++ ": " ++ printkn knK1 ++ ". " ++ printty ctx' tyT2 ++ ")"
         TyApp tyT1 tyT2 -> "(" ++ printty ctx tyT1 ++ " " ++ printty ctx tyT2 ++ ")"
         TyAll tyX knK1 tyT2 ->
                 let (tyX', ctx') = pickfreshname tyX ctx
-                 in "(∀" ++ tyX ++ ". " ++ printty ctx' tyT2 ++ ")"
+                 in "(∀" ++ tyX ++ ": " ++ printkn knK1 ++ ". " ++ printty ctx' tyT2 ++ ")"
 
-printkn :: Context -> Kind -> String
-printkn ctx kn = case kn of
+printkn :: Kind -> String
+printkn kn = case kn of
         KnStar -> "*"
-        KnArr knK1 knK2 -> "(" ++ printkn ctx knK1 ++ " -> " ++ printkn ctx knK2 ++ ")"
+        KnArr knK1 knK2 -> "(" ++ printkn knK1 ++ " -> " ++ printkn knK2 ++ ")"

@@ -3,14 +3,7 @@
 
 module Typed.Syntax where
 
-import Control.Exception.Safe
-import Control.Monad.State (
-        MonadState (get, put, state),
-        State,
-        StateT,
-        modify,
-        runState,
- )
+import Control.Exception.Safe (MonadThrow, throwString)
 import Data.List (elemIndex)
 
 ----------------------------------------------------------------

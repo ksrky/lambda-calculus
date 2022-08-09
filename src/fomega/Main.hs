@@ -3,12 +3,10 @@ module Main where
 import FOmega.Evaluator (eval, typeof)
 import FOmega.Parser (pCommands, prettyError)
 import FOmega.Syntax (
-        CT,
         Command (..),
         Context,
         addbinding,
         emptyContext,
-        evalCT,
         printtm,
         printty,
  )
@@ -17,7 +15,9 @@ import Control.Exception.Safe (MonadThrow)
 import Control.Monad.State (
         MonadIO (..),
         MonadState (get),
+        StateT,
         execStateT,
+        modify,
  )
 import System.Console.Haskeline (
         InputT,
@@ -63,17 +63,15 @@ process inp ctx = case pCommands inp of
                 ctx' <- mapM processCommand cmds `execStateT` ctx
                 return ctx
 
-processCommand :: (MonadThrow m, MonadIO m) => Command -> CT m ()
+processCommand :: (MonadThrow m, MonadIO m) => Command -> StateT Context m ()
 processCommand cmd = case cmd of
         Eval t -> do
-                error $ show t
-                tyT <- evalCT $ typeof t
                 ctx <- get
+                tyT <- typeof ctx t
                 let t' = eval ctx t
                 liftIO $ do
                         putStrLn $ "  " ++ printtm ctx t
                         putStr $ "> " ++ printtm ctx t'
                         putStr " : "
                         putStrLn $ printty ctx tyT
-        Bind x bind -> do
-                addbinding x bind
+        Bind x bind -> modify $ addbinding x bind

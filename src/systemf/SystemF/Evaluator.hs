@@ -32,35 +32,66 @@ eval ctx t = maybe t (eval ctx) (eval1 t)
                         return $ TmTApp t1' tyT2
                 _ -> Nothing
 
-typeof :: MonadThrow m => Term -> CT m Ty
-typeof t = case t of
-        TmVar i _ -> do
-                ctx <- get
-                getTypeFromContext ctx i
+----------------------------------------------------------------
+-- Type check
+----------------------------------------------------------------
+istyabb :: Context -> Int -> Bool
+istyabb ctx i = case getbinding ctx i of
+        TyAbbBind tyT -> True
+        _ -> False
+
+gettyabb :: Context -> Int -> Ty
+gettyabb ctx i = case getbinding ctx i of
+        TyAbbBind tyT -> tyT
+        _ -> error ""
+
+computety :: Context -> Ty -> Maybe Ty
+computety ctx tyT = case tyT of
+        TyVar i _ | istyabb ctx i -> Just $ gettyabb ctx i
+        _ -> Nothing
+
+simplifyty :: Context -> Ty -> Ty
+simplifyty ctx tyT = case computety ctx tyT of
+        Just tyT' -> simplifyty ctx tyT'
+        Nothing -> tyT
+
+tyeqv :: MonadThrow m => Context -> Ty -> Ty -> m ()
+tyeqv ctx tyS tyT = do
+        let tyS' = simplifyty ctx tyS
+            tyT' = simplifyty ctx tyT
+        case (tyS', tyT') of
+                (TyVar i _, _) | istyabb ctx i -> tyeqv ctx (gettyabb ctx i) tyT
+                (_, TyVar i _) | istyabb ctx i -> tyeqv ctx tyS (gettyabb ctx i)
+                (TyVar i _, TyVar j _) | i == j -> return ()
+                (TyArr tyS1 tyS2, TyArr tyT1 tyT2) -> do
+                        tyeqv ctx tyS1 tyT1
+                        tyeqv ctx tyS2 tyT2
+                (TyAll tyX1 tyS2, TyAll _ tyT2) -> do
+                        let ctx' = addname tyX1 ctx
+                        tyeqv ctx' tyS2 tyT2
+                _ -> throwString $ "type mismatch: " ++ printty ctx tyS ++ ", " ++ printty ctx tyT
+
+typeof :: MonadThrow m => Context -> Term -> m Ty
+typeof ctx t = case t of
+        TmVar i _ -> getTypeFromContext ctx i
         TmAbs x tyT1 t2 -> do
-                addbinding x (VarBind tyT1)
-                tyT2 <- typeof t2
-                return $ TyArr tyT1 tyT2
+                let ctx' = addbinding x (VarBind tyT1) ctx
+                tyT2 <- typeof ctx' t2
+                return $ TyArr tyT1 (typeShift (-1) tyT2)
         TmApp t1 t2 -> do
-                tyT1 <- typeof t1
-                tyT2 <- typeof t2
+                tyT1 <- typeof ctx t1
+                tyT2 <- typeof ctx t2
                 case tyT1 of
                         TyArr tyT11 tyT12 -> do
-                                tyeqv tyT2 tyT11
+                                tyeqv ctx tyT2 tyT11
                                 return tyT12
                         _ -> throwString "arrow type expected"
         TmTAbs tyX t2 -> do
-                addbinding tyX TyVarBind
-                tyT2 <- typeof t2
+                let ctx' = addbinding tyX TyVarBind ctx
+                tyT2 <- typeof ctx' t2
                 return $ TyAll tyX tyT2
         TmTApp t1 tyT2 -> do
-                tyT1 <- typeof t1
+                tyT1 <- typeof ctx t1
                 case tyT1 of
                         TyAll _ tyT12 -> return $ typeSubstTop tyT2 tyT12
                         _ -> throwString "universal type expected"
-
-tyeqv :: MonadThrow m => Ty -> Ty -> m ()
-tyeqv tyS tyT =
-        if tyS == tyT
-                then return ()
-                else throwString $ "type mismatch: " ++ show tyS ++ ", " ++ show tyT

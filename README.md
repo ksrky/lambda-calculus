@@ -1,6 +1,11 @@
 # Lambda calculus
 
-Haskell implementation of Types and Programming Languages written by Benjamin C. Pierce
+Gradual extension from untyped lambda calculus to Calculus of Construction (CoC).
+
+### Referenced documents
+
+- Benjamin C. Pierce, Types and Programming Languages (TaPL)
+- Andres Löh, Conor McBride, and Wouter Swierstra. 2010. A Tutorial Implementation of a Dependently Typed Lambda Calculus. Fundam. Inf. 102, 2 (April 2010), 177–207.
 
 ## [untyped](https://github.com/ksrky/lambda-calculus/tree/master/src/untyped)
 
@@ -21,7 +26,7 @@ t ::=                       :terms
 
 ## [typed](https://github.com/ksrky/lambda-calculus/tree/master/src/typed)
 
-$\lambda_{\rightarrow}$: Simply typed lambda calculus / Propositional logic
+$\lambda_{\rightarrow}$: Simply typed lambda calculus / First-order propositional logic
 
 ### Syntax
 
@@ -116,7 +121,7 @@ note: Quantification of a variable is limited to the term level.
 
 ### Reference
 
-- Andres Löh, Conor McBride, and Wouter Swierstra. 2010. A Tutorial Implementation of a Dependently Typed Lambda Calculus. Fundam. Inf. 102, 2 (April 2010), 177–207.
+- A Tutorial Implementation of a Dependently Typed Lambda Calculus, section 3
 
 ## lambdapi2
 

@@ -33,8 +33,7 @@ eval t = maybe t eval (eval1 t)
 
 typeof :: MonadThrow m => Context -> Term -> m Ty
 typeof ctx t = case t of
-        TmVar i _ -> do
-                getTypeFromContext ctx i
+        TmVar i _ -> getTypeFromContext ctx i
         TmAbs x tyT1 t2 -> do
                 let ctx' = addbinding x (VarBind tyT1) ctx
                 tyT2 <- typeof ctx' t2
