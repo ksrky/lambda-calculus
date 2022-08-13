@@ -49,15 +49,15 @@ pickfreshname x ctx = case lookup x ctx of
 index2name :: Context -> Int -> String
 index2name ctx x = fst (ctx !! x)
 
-getVarIndex :: MonadFail m => String -> Context -> m Int
-getVarIndex var ctx = case elemIndex var (map fst ctx) of
-        Just i -> return i
-        Nothing -> fail $ "Unbound variable name: '" ++ var ++ "'"
-
 getTypeFromContext :: MonadThrow m => Context -> Int -> m Ty
 getTypeFromContext ctx i = case ctx !! i of
         (_, VarBind tyT) -> return tyT
         _ -> throwString $ "Wrong kind of binding for variable " ++ index2name ctx i
+
+getVarIndex :: MonadFail m => String -> Context -> m Int
+getVarIndex var ctx = case elemIndex var (map fst ctx) of
+        Just i -> return i
+        Nothing -> fail $ "Unbound variable name: '" ++ var ++ "'"
 
 ----------------------------------------------------------------
 -- Term

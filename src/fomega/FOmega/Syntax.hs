@@ -29,8 +29,8 @@ data Binding
         = NameBind
         | VarBind Ty
         | TyVarBind Kind
-        | TyAbbBind Ty (Maybe Kind)
         | TmAbbBind Term (Maybe Ty)
+        | TyAbbBind Ty (Maybe Kind)
         deriving (Show)
 
 data Command
@@ -65,8 +65,8 @@ bindingShift d bind = case bind of
         NameBind -> NameBind
         VarBind tyT -> VarBind (typeShift d tyT)
         TyVarBind knK -> TyVarBind knK
-        TyAbbBind tyT opt -> TyAbbBind (typeShift d tyT) opt
         TmAbbBind t tyT_opt -> TmAbbBind (termShift d t) (typeShift d <$> tyT_opt)
+        TyAbbBind tyT opt -> TyAbbBind (typeShift d tyT) opt
 
 getbinding :: Context -> Int -> Binding
 getbinding ctx i = bindingShift (i + 1) (snd $ ctx !! i)

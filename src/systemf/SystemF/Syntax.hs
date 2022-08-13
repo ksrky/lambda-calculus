@@ -63,8 +63,8 @@ bindingShift d bind = case bind of
         NameBind -> NameBind
         VarBind tyT -> VarBind (typeShift d tyT)
         TyVarBind -> TyVarBind
-        TyAbbBind tyT -> TyAbbBind (typeShift d tyT)
         TmAbbBind t tyT_opt -> TmAbbBind (termShift d t) (typeShift d <$> tyT_opt)
+        TyAbbBind tyT -> TyAbbBind (typeShift d tyT)
 
 getbinding :: Context -> Int -> Binding
 getbinding ctx i = bindingShift (i + 1) (snd $ ctx !! i)
