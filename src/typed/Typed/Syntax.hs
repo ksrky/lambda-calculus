@@ -1,6 +1,3 @@
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-
 module Typed.Syntax where
 
 import Control.Exception.Safe (MonadThrow, throwString)

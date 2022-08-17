@@ -6,11 +6,25 @@ import Control.Monad.Combinators.Expr (
         Operator (InfixL, Postfix, Prefix),
         makeExprParser,
  )
-import Control.Monad.State
-import Data.List (elemIndex)
+import Control.Monad.State (
+        MonadState (get),
+        MonadTrans (lift),
+        StateT,
+        evalStateT,
+        modify,
+ )
 import Data.Text (Text, pack)
 import Data.Void (Void)
-import SystemF.Syntax
+import SystemF.Syntax (
+        Binding (TmAbbBind, TyAbbBind, TyVarBind, VarBind),
+        Command (..),
+        Context,
+        Term (..),
+        Ty (..),
+        addname,
+        emptyContext,
+        getVarIndex,
+ )
 import Text.Megaparsec (
         MonadParsec (eof, try),
         ParseErrorBundle,
