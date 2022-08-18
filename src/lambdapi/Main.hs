@@ -1,12 +1,25 @@
 module Main where
 
-import Control.Exception.Safe
-import Control.Monad.State
-import Control.Monad.Trans (MonadIO (liftIO))
-import LambdaPi.Evaluator (eval)
+import LambdaPi.Evaluator
 import LambdaPi.Parser
 import LambdaPi.Syntax
-import System.Console.Haskeline
+
+import Control.Exception.Safe (MonadThrow)
+import Control.Monad.State (
+        MonadIO (..),
+        MonadState (get),
+        StateT,
+        execStateT,
+        modify,
+ )
+import Control.Monad.Trans (MonadIO (liftIO))
+import System.Console.Haskeline (
+        InputT,
+        defaultSettings,
+        getInputLine,
+        outputStrLn,
+        runInputT,
+ )
 import System.Environment (getArgs)
 
 main :: IO ()

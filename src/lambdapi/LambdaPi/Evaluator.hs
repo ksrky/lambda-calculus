@@ -17,8 +17,8 @@ instance IsVal Term where
                 TmPi _ t1 t2 -> isval t1 && isval t2
                 _ -> False
 
-eval :: Term -> Term
-eval t = maybe t eval (evalTm t)
+eval :: Context -> Term -> Term
+eval ctx t = maybe t (eval ctx) (evalTm t)
     where
         evalTm :: Term -> Maybe Term
         evalTm t = case t of

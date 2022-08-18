@@ -113,8 +113,8 @@ t ::=                       :terms
       x                     variable
       \x:t.t                abstraction
       t t                   application
+      x:t->t                dependent function space
       *                     type of types
-      forall x:t.t        　dependent product type
 ```
 
 note: Quantification of a variable is limited to the term level.
@@ -134,8 +134,8 @@ t ::=                       :terms
       x                     variable
       \x:t.t                abstraction
       t t                   application
+      x:t->t                dependent function space
       *                     type of types
-      forall x:t.t          dependent product type
 ```
 
 note: Quantification of a variable is limited to the type level.
@@ -153,8 +153,8 @@ t ::=                       :terms
       x                     variable
       \x:t.t                abstraction
       t t                   application
+      x:t->t                dependent function space
       *                     type of types
-      forall x:t.t          dependent product type
 ```
 
 not yet
