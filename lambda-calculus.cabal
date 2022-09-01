@@ -43,9 +43,6 @@ library
 executable coc
   main-is: Main.hs
   other-modules:
-      CoC.Evaluator
-      CoC.Parser
-      CoC.Syntax
       Paths_lambda_calculus
   hs-source-dirs:
       src/coc
@@ -66,9 +63,6 @@ executable coc
 executable derived
   main-is: Main.hs
   other-modules:
-      Derived.Evaluator
-      Derived.Parser
-      Derived.Syntax
       Paths_lambda_calculus
   hs-source-dirs:
       src/derived

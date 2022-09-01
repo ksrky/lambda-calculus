@@ -6,6 +6,8 @@ Gradual extension from untyped lambda calculus to Calculus of Construction (CoC)
 
 - Benjamin C. Pierce, Types and Programming Languages (TaPL)
 - Andres Löh, Conor McBride, and Wouter Swierstra. 2010. A Tutorial Implementation of a Dependently Typed Lambda Calculus. Fundam. Inf. 102, 2 (April 2010), 177–207.
+- Robert Harper, Furio Honsell, and Gordon Plotkin. 1993. A framework for defining logics. J. ACM 40, 1 (Jan. 1993), 143–184. https://doi.org/10.1145/138027.138060
+- Thierry Coquand, Gérard Huet, The calculus of constructions, Information and Computation, Volume 76, Issues 2–3, 1988, Pages 95-120, ISSN 0890-5401, https://doi.org/10.1016/0890-5401(88)90005-3.
 
 ## [untyped](https://github.com/ksrky/lambda-calculus/tree/master/src/untyped)
 
