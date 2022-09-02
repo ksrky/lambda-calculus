@@ -40,130 +40,15 @@ library
     , text
   default-language: Haskell2010
 
-executable coc
+executable ex-typed
   main-is: Main.hs
   other-modules:
-      CoC.Evaluator
-      CoC.Parser
-      CoC.Syntax
+      Evaluator
+      Parser
+      Syntax
       Paths_lambda_calculus
   hs-source-dirs:
-      src/coc
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
-  build-depends:
-      base >=4.7 && <5
-    , directory
-    , haskeline
-    , hspec
-    , lambda-calculus
-    , megaparsec
-    , mtl
-    , parser-combinators
-    , safe-exceptions
-    , text
-  default-language: Haskell2010
-
-executable derived
-  main-is: Main.hs
-  other-modules:
-      Derived.Evaluator
-      Derived.Parser
-      Derived.Syntax
-      Paths_lambda_calculus
-  hs-source-dirs:
-      src/derived
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
-  build-depends:
-      base >=4.7 && <5
-    , directory
-    , haskeline
-    , hspec
-    , lambda-calculus
-    , megaparsec
-    , mtl
-    , parser-combinators
-    , safe-exceptions
-    , text
-  default-language: Haskell2010
-
-executable fomega
-  main-is: Main.hs
-  other-modules:
-      FOmega.Evaluator
-      FOmega.Parser
-      FOmega.Syntax
-      Paths_lambda_calculus
-  hs-source-dirs:
-      src/fomega
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
-  build-depends:
-      base >=4.7 && <5
-    , directory
-    , haskeline
-    , hspec
-    , lambda-calculus
-    , megaparsec
-    , mtl
-    , parser-combinators
-    , safe-exceptions
-    , text
-  default-language: Haskell2010
-
-executable lambda-calculus-exe
-  main-is: Main.hs
-  other-modules:
-      Untyped.Evaluator
-      Untyped.Parser
-      Untyped.Syntax
-      Paths_lambda_calculus
-  hs-source-dirs:
-      src/untyped
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
-  build-depends:
-      base >=4.7 && <5
-    , directory
-    , haskeline
-    , hspec
-    , lambda-calculus
-    , megaparsec
-    , mtl
-    , parser-combinators
-    , safe-exceptions
-    , text
-  default-language: Haskell2010
-
-executable lambdapi
-  main-is: Main.hs
-  other-modules:
-      LambdaPi.Evaluator
-      LambdaPi.Parser
-      LambdaPi.Syntax
-      Paths_lambda_calculus
-  hs-source-dirs:
-      src/lambdapi
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
-  build-depends:
-      base >=4.7 && <5
-    , directory
-    , haskeline
-    , hspec
-    , lambda-calculus
-    , megaparsec
-    , mtl
-    , parser-combinators
-    , safe-exceptions
-    , text
-  default-language: Haskell2010
-
-executable systemf
-  main-is: Main.hs
-  other-modules:
-      SystemF.Evaluator
-      SystemF.Parser
-      SystemF.Syntax
-      Paths_lambda_calculus
-  hs-source-dirs:
-      src/systemf
+      src/ex-typed
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
@@ -187,73 +72,6 @@ executable typed
       Paths_lambda_calculus
   hs-source-dirs:
       src/typed
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
-  build-depends:
-      base >=4.7 && <5
-    , directory
-    , haskeline
-    , hspec
-    , lambda-calculus
-    , megaparsec
-    , mtl
-    , parser-combinators
-    , safe-exceptions
-    , text
-  default-language: Haskell2010
-
-executable untyped
-  main-is: Main.hs
-  other-modules:
-      Untyped.Evaluator
-      Untyped.Parser
-      Untyped.Syntax
-      Paths_lambda_calculus
-  hs-source-dirs:
-      src/untyped
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
-  build-depends:
-      base >=4.7 && <5
-    , directory
-    , haskeline
-    , hspec
-    , lambda-calculus
-    , megaparsec
-    , mtl
-    , parser-combinators
-    , safe-exceptions
-    , text
-  default-language: Haskell2010
-
-test-suite typed-test
-  type: exitcode-stdio-1.0
-  main-is: Spec.hs
-  other-modules:
-      TypedSpec
-      Paths_lambda_calculus
-  hs-source-dirs:
-      test/typed
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
-  build-depends:
-      base >=4.7 && <5
-    , directory
-    , haskeline
-    , hspec
-    , lambda-calculus
-    , megaparsec
-    , mtl
-    , parser-combinators
-    , safe-exceptions
-    , text
-  default-language: Haskell2010
-
-test-suite untyped-test
-  type: exitcode-stdio-1.0
-  main-is: Spec.hs
-  other-modules:
-      UntypedSpec
-      Paths_lambda_calculus
-  hs-source-dirs:
-      test/untyped
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5

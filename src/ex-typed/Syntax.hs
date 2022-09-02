@@ -1,4 +1,4 @@
-module Derived.Syntax where
+module Syntax where
 
 import Control.Exception.Safe (MonadThrow, throwString)
 import Data.List (elemIndex)
@@ -10,28 +10,21 @@ data Ty
         = TyVar Int Int
         | TyArr Ty Ty
         | TyRecord [(String, Ty)]
-        | TyVariant [(String, [Ty])]
-        | TyRec String Ty
-        | TyBool
-        | TyNat
+        | TyVariant [(String, Ty)]
+        | TyUnit
         deriving (Eq, Show)
 
 data Term
         = TmVar Int Int
         | TmAbs String Ty Term
         | TmApp Term Term
+        | TmLet String Term Term
         | TmFix Term
         | TmRecord [(String, Term)]
-        | TmCase Term [(String, (Int, Term))]
-        | TmTag String [Term] Ty
-        | TmFold Ty
-        | TmUnfold Ty
-        | -- Base
-          TmSucc Term
-        | TmZero
-        | TmTrue
-        | TmFalse
-        | TmIf Term Term Term
+        | TmProj Term String
+        | TmCase Term [(String, (String, Term))]
+        | TmTag String Term Ty
+        | TmUnit
         deriving (Show)
 
 data Binding
@@ -100,9 +93,8 @@ tymap onvar c tyT = walk c tyT
                 TyVar x n -> onvar c x n
                 TyArr tyT1 tyT2 -> TyArr (walk c tyT1) (walk c tyT2)
                 TyRecord fieldtys -> TyRecord (map (\(li, tyTi) -> (li, walk c tyTi)) fieldtys)
-                TyVariant fieldtys -> TyVariant (map (\(li, tyTs) -> (li, map (walk c) tyTs)) fieldtys)
-                TyRec x tyT -> TyRec x (walk (c + 1) tyT)
-                _ -> tyT
+                TyVariant fieldtys -> TyVariant (map (\(li, tyTi) -> (li, walk c tyTi)) fieldtys)
+                TyUnit -> TyUnit
 
 typeShiftAbove :: Int -> Int -> Ty -> Ty
 typeShiftAbove d =
@@ -138,15 +130,13 @@ tmmap onvar ontype c t = walk c t
                 TmVar x n -> onvar c x n
                 TmAbs x tyT1 t2 -> TmAbs x (ontype c tyT1) (walk (c + 1) t2)
                 TmApp t1 t2 -> TmApp (walk c t1) (walk c t2)
+                TmLet x t1 t2 -> TmLet x (walk c t1) (walk (c + 1) t2)
                 TmFix t1 -> TmFix (walk c t1)
                 TmRecord fields -> TmRecord (map (\(li, ti) -> (li, walk c ti)) fields)
+                TmProj t1 l -> TmProj (walk c t1) l
                 TmCase t1 cases -> TmCase (walk c t1) (map (\(li, (ki, ti)) -> (li, (ki, walk (c + 1) ti))) cases)
-                TmTag l ts1 tyT2 -> TmTag l (map (walk c) ts1) (ontype c tyT2)
-                TmFold tyT -> TmFold (ontype c tyT)
-                TmUnfold tyT -> TmUnfold (ontype c tyT)
-                TmSucc t1 -> TmSucc (walk c t1)
-                TmIf t1 t2 t3 -> TmIf (walk c t1) (walk c t2) (walk c t3)
-                _ -> t
+                TmTag l t1 tyT2 -> TmTag l t1 (ontype c tyT2)
+                TmUnit -> TmUnit
 
 termShiftAbove :: Int -> Int -> Term -> Term
 termShiftAbove d =
@@ -178,37 +168,62 @@ termSubstTop s t = termShift (-1) (termSubst 0 (termShift 1 s) t)
 ----------------------------------------------------------------
 -- Printing
 ----------------------------------------------------------------
-printtm :: Context -> Term -> String
-printtm ctx t = case t of
+outer :: Bool -> String -> String
+outer True s = "(" ++ s ++ ")"
+outer False s = s
+
+printtm :: Context -> Bool -> Term -> String
+printtm ctx b t = case t of
         TmVar x n ->
                 if length ctx == n
                         then index2name ctx x
                         else "[bad index]"
         TmAbs x tyT1 t2 ->
                 let (x', ctx') = pickfreshname x ctx
-                 in "(λ" ++ x' ++ ": " ++ printty ctx tyT1 ++ ". " ++ printtm ctx' t2 ++ ")"
-        TmApp t1 t2 -> "(" ++ printtm ctx t1 ++ " " ++ printtm ctx t2 ++ ")"
-        TmFix t1 -> "fix " ++ printtm ctx t1
-        TmRecord fields -> ""
-        TmCase t1 cases -> "case " ++ printtm ctx t1 ++ " of {" ++ "}"
-        TmTag l ts1 tyT2 -> l ++ " " ++ unwords (map (printtm ctx) ts1) ++ ": " ++ printty ctx tyT2
-        TmFold tyT -> ""
-        TmUnfold tyT -> ""
-        TmSucc t1 -> "succ " ++ printtm ctx t
-        TmZero -> "zero"
-        TmTrue -> "true"
-        TmFalse -> "false"
-        TmIf t1 t2 t3 -> "if " ++ printtm ctx t1 ++ " then " ++ printtm ctx t2 ++ " else " ++ printtm ctx t3
+                 in outer b $ "λ" ++ x' ++ ": " ++ printty ctx False tyT1 ++ ". " ++ printtm ctx' False t2
+        TmApp t1 t2 -> outer b $ printtm ctx False t1 ++ " " ++ printtm ctx True t2
+        TmLet x t1 t2 ->
+                let (x', ctx') = pickfreshname x ctx
+                 in outer b $ "let " ++ x ++ " = " ++ printtm ctx False t1 ++ " in " ++ printtm ctx' False t2
+        TmFix t1 -> outer b $ "fix " ++ printtm ctx True t1
+        TmRecord fields ->
+                let pf i (li, ti) =
+                        (if show li /= show i then li ++ "=" else "") ++ printtm ctx False ti
+                    pfs i l = case l of
+                        [] -> ""
+                        [f] -> pf i f
+                        f : rest -> pf i f ++ ", " ++ pfs (i + 1) rest
+                 in "{" ++ pfs 1 fields ++ "}"
+        TmProj t1 l -> printtm ctx False t1 ++ "." ++ l
+        TmCase t1 cases ->
+                let palts ctx [] = ""
+                    palts ctx ((li, (xi, ti)) : rest) =
+                        let (xi', ctx') = pickfreshname xi ctx
+                         in li ++ " " ++ xi ++ "->" ++ printtm ctx' False ti ++ " | " ++ palts ctx' rest
+                 in outer b $ "case " ++ printtm ctx False t1 ++ " of {" ++ palts ctx cases ++ "}"
+        TmTag l t1 tyT2 -> "<" ++ l ++ " " ++ printtm ctx True t1 ++ ": " ++ printty ctx False tyT2 ++ ">"
+        TmUnit -> "()"
 
-printty :: Context -> Ty -> String
-printty ctx ty = case ty of
+printty :: Context -> Bool -> Ty -> String
+printty ctx b ty = case ty of
         TyVar x n ->
                 if length ctx == n
                         then index2name ctx x
                         else "[bad index]"
-        TyArr tyT1 tyT2 -> "(" ++ printty ctx tyT1 ++ " -> " ++ printty ctx tyT2 ++ ")"
-        TyRecord fields -> ""
-        TyVariant fields -> ""
-        TyRec x tyT -> ""
-        TyBool -> "Bool"
-        TyNat -> "Nat"
+        TyArr tyT1 tyT2 -> outer b $ printty ctx True tyT1 ++ " -> " ++ printty ctx False tyT2
+        TyRecord fields ->
+                let pf i (li, tyTi) =
+                        (if show li /= show i then li ++ "=" else "") ++ printty ctx False tyTi
+                    pfs i l = case l of
+                        [] -> ""
+                        [f] -> pf i f
+                        f : rest -> pf i f ++ ", " ++ pfs (i + 1) rest
+                 in "{" ++ pfs 1 fields ++ "}"
+        TyVariant fields ->
+                let pf i (li, tyTi) = li ++ ": " ++ printty ctx False tyTi
+                    pfs i l = case l of
+                        [] -> ""
+                        [f] -> pf i f
+                        f : rest -> pf i f ++ " | " ++ pfs (i + 1) rest
+                 in "<" ++ pfs 1 fields ++ ">"
+        TyUnit -> "()"

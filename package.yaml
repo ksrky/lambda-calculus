@@ -34,24 +34,6 @@ library:
   source-dirs: src
 
 executables:
-  lambda-calculus-exe:
-    main: Main.hs
-    source-dirs: src/untyped
-    ghc-options:
-      - -threaded
-      - -rtsopts
-      - -with-rtsopts=-N
-    dependencies:
-      - lambda-calculus
-  untyped:
-    main: Main.hs
-    source-dirs: src/untyped
-    ghc-options:
-      - -threaded
-      - -rtsopts
-      - -with-rtsopts=-N
-    dependencies:
-      - lambda-calculus
   typed:
     main: Main.hs
     source-dirs: src/typed
@@ -61,65 +43,9 @@ executables:
       - -with-rtsopts=-N
     dependencies:
       - lambda-calculus
-  systemf:
+  ex-typed:
     main: Main.hs
-    source-dirs: src/systemf
-    ghc-options:
-      - -threaded
-      - -rtsopts
-      - -with-rtsopts=-N
-    dependencies:
-      - lambda-calculus
-  fomega:
-    main: Main.hs
-    source-dirs: src/fomega
-    ghc-options:
-      - -threaded
-      - -rtsopts
-      - -with-rtsopts=-N
-    dependencies:
-      - lambda-calculus
-  lambdapi:
-    main: Main.hs
-    source-dirs: src/lambdapi
-    ghc-options:
-      - -threaded
-      - -rtsopts
-      - -with-rtsopts=-N
-    dependencies:
-      - lambda-calculus
-  coc:
-    main: Main.hs
-    source-dirs: src/coc
-    ghc-options:
-      - -threaded
-      - -rtsopts
-      - -with-rtsopts=-N
-    dependencies:
-      - lambda-calculus
-  derived:
-    main: Main.hs
-    source-dirs: src/derived
-    ghc-options:
-      - -threaded
-      - -rtsopts
-      - -with-rtsopts=-N
-    dependencies:
-      - lambda-calculus
-
-tests:
-  untyped-test:
-    main: Spec.hs
-    source-dirs: test/untyped
-    ghc-options:
-      - -threaded
-      - -rtsopts
-      - -with-rtsopts=-N
-    dependencies:
-      - lambda-calculus
-  typed-test:
-    main: Spec.hs
-    source-dirs: test/typed
+    source-dirs: src/ex-typed
     ghc-options:
       - -threaded
       - -rtsopts

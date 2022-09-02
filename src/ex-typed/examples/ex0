@@ -1,0 +1,3 @@
+unit : ();
+
+let { f = \x:().x; } in f unit;
