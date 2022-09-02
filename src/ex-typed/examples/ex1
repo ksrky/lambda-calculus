@@ -1,0 +1,5 @@
+Bool = <false:() | true:()>;
+
+not = \b:Bool.case b; { true x -> <false=()> as Bool; | false x -> <true=()> as Bool; };
+
+not <false=()> as Bool;

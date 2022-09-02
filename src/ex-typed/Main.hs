@@ -57,9 +57,13 @@ processCommand cmd = case cmd of
                 ctx <- get
                 tyT <- typeof ctx t
                 let t' = eval ctx t
+                -- t' <- liftIO $ evalIO ctx t
                 liftIO $ do
                         putStrLn $ "  " ++ printtm ctx False t
                         putStr $ "> " ++ printtm ctx False t'
                         putStr " : "
                         putStrLn $ printty ctx False tyT
-        Bind x bind -> modify $ addbinding x bind
+        Bind x bind -> do
+                ctx <- get
+                bind' <- checkBinding ctx bind
+                modify $ addbinding x bind'

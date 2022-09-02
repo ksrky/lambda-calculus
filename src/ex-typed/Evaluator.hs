@@ -11,11 +11,13 @@ import Control.Monad.State
 ----------------------------------------------------------------
 isval :: Context -> Term -> Bool
 isval ctx t = case t of
-        TmAbs{} -> True
-        TmRecord fields -> all (\(l, ti) -> isval ctx ti) fields
         TmVar i _ -> case getbinding ctx i of
                 VarBind{} -> True
                 _ -> False
+        TmTag l t1 _ -> isval ctx t1
+        TmAbs{} -> True
+        TmRecord fields -> all (\(l, ti) -> isval ctx ti) fields
+        TmUnit -> True
         _ -> False
 
 eval :: Context -> Term -> Term
@@ -23,7 +25,7 @@ eval ctx t = maybe t (eval ctx) (eval1 t)
     where
         eval1 :: Term -> Maybe Term
         eval1 t = case t of
-                TmVar n _ -> case getbinding ctx n of
+                TmVar i _ -> case getbinding ctx i of
                         TmAbbBind t _ -> Just t
                         _ -> Nothing
                 TmApp (TmAbs x ty t12) v2 | isval ctx v2 -> Just $ termSubstTop v2 t12
@@ -55,19 +57,29 @@ eval ctx t = maybe t (eval ctx) (eval1 t)
                                         Just $ (l, ti') : rest
                         fields' <- evalafield fields
                         Just $ TmRecord fields'
-                TmTag l v1 tyT2 | isval ctx v1 -> Nothing
-                TmTag l t1 tyT2 -> do
+                TmProj (TmRecord fields) l -> lookup l fields
+                TmProj t1 l -> do
                         t1' <- eval1 t1
-                        Just $ TmTag l t1' tyT2
-                TmCase (TmTag l v11 _) alts | isval ctx v11 -> case lookup l alts of
-                        Just (_, body) -> do
-                                return $ termSubstTop body v11
+                        Just $ TmProj t1' l
+                TmCase (TmTag l1 v11 tyT12) alts | isval ctx v11 -> case lookup l1 alts of
+                        Just (_, body) -> Just $ termSubstTop body v11
                         Nothing -> Nothing
                 TmCase t1 alts -> do
                         t1' <- eval1 t1
                         Just $ TmCase t1' alts
+                TmTag l v1 tyT2 | isval ctx v1 -> Nothing
+                TmTag l t1 tyT2 -> do
+                        t1' <- eval1 t1
+                        Just $ TmTag l t1' tyT2
                 _ -> Nothing
 
+{-
+evalIO :: Context -> Term -> IO Term
+evalIO ctx t =
+        putStrLn (printtm ctx False t ++ "\n") >> case eval1 t of
+                Just t' -> evalIO ctx t'
+                Nothing -> return t
+-}
 ----------------------------------------------------------------
 -- Type check
 ----------------------------------------------------------------
@@ -126,7 +138,7 @@ typeof ctx t = case t of
         TmAbs x tyT1 t2 -> do
                 let ctx' = addbinding x (VarBind tyT1) ctx
                 tyT2 <- typeof ctx' t2
-                return $ TyArr tyT1 tyT2
+                return $ TyArr tyT1 (typeShift (-1) tyT2)
         TmApp t1 t2 -> do
                 tyT1 <- typeof ctx t1
                 tyT2 <- typeof ctx t2
@@ -158,29 +170,43 @@ typeof ctx t = case t of
                         TyRecord fieldtys -> case lookup l fieldtys of
                                 Just tyT2 -> return tyT2
                                 Nothing -> throwString $ "label " ++ l ++ " not found"
-                        _ -> throwString "Expected record type"
-        TmCase t1 alts -> do
-                tyT <- typeof ctx t1
+                        tyT' -> throwString $ "Expected record type" ++ printty ctx False tyT'
+        TmCase t alts -> do
+                tyT <- typeof ctx t
                 case simplifyty ctx tyT of
                         TyVariant fieldtys -> do
                                 tys <- forM alts $ \(li, (xi, ti)) -> case lookup li fieldtys of
                                         Just tySi -> do
                                                 let ctx' = addbinding xi (VarBind tySi) ctx
-                                                tyTi <- typeof ctx ti
+                                                tyTi <- typeof ctx' ti
                                                 return $ typeShift (-1) tyTi
                                         Nothing -> throwString $ "label " ++ li ++ " not found"
                                 case tys of
-                                        [] -> return $ TyRecord []
+                                        [] -> return TyUnit
                                         tyT1 : restTy -> do
                                                 forM_ restTy $ \tyTi -> tyeqv ctx tyTi tyT1
                                                 return tyT1
-                        _ -> throwString "Expected variant type"
+                        tyT' -> throwString $ "Expected variant type, but got " ++ printty ctx False tyT'
         TmTag l t1 tyT2 -> case simplifyty ctx tyT2 of
                 TyVariant fieldtys -> case lookup l fieldtys of
-                        Just tyT1Expected -> do
+                        Just tyT1' -> do
                                 tyT1 <- typeof ctx t1
-                                tyeqv ctx tyT1 tyT1Expected
+                                tyeqv ctx tyT1 tyT1'
                                 return tyT2
                         Nothing -> throwString $ "label " ++ l ++ " not found"
-                _ -> throwString "Expected variant type"
+                tyT' -> throwString $ "Expected variant type, but got " ++ printty ctx False tyT'
         TmUnit -> return TyUnit
+
+checkBinding :: MonadThrow m => Context -> Binding -> m Binding
+checkBinding ctx b = case b of
+        NameBind -> return NameBind
+        VarBind tyT -> return $ VarBind tyT
+        TmAbbBind t Nothing -> do
+                tyT <- typeof ctx t
+                return $ TmAbbBind t (Just tyT)
+        TmAbbBind t (Just tyT) -> do
+                tyT' <- typeof ctx t
+                tyeqv ctx tyT' tyT
+                return $ TmAbbBind t (Just tyT)
+        TyVarBind -> return TyVarBind
+        TyAbbBind tyT -> return $ TyAbbBind tyT

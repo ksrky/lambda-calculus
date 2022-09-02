@@ -74,8 +74,10 @@ getbinding :: Context -> Int -> Binding
 getbinding ctx i = bindingShift (i + 1) (snd $ ctx !! i)
 
 getTypeFromContext :: MonadThrow m => Context -> Int -> m Ty
-getTypeFromContext ctx i = case ctx !! i of
-        (_, VarBind tyT) -> return tyT
+getTypeFromContext ctx i = case getbinding ctx i of
+        VarBind tyT -> return tyT
+        TmAbbBind _ (Just tyT) -> return tyT
+        TmAbbBind _ Nothing -> throwString $ "No type recorded for variable " ++ index2name ctx i
         _ -> throwString $ "Wrong kind of binding for variable " ++ index2name ctx i
 
 getVarIndex :: MonadFail m => String -> Context -> m Int
@@ -134,8 +136,8 @@ tmmap onvar ontype c t = walk c t
                 TmFix t1 -> TmFix (walk c t1)
                 TmRecord fields -> TmRecord (map (\(li, ti) -> (li, walk c ti)) fields)
                 TmProj t1 l -> TmProj (walk c t1) l
-                TmCase t1 cases -> TmCase (walk c t1) (map (\(li, (ki, ti)) -> (li, (ki, walk (c + 1) ti))) cases)
-                TmTag l t1 tyT2 -> TmTag l t1 (ontype c tyT2)
+                TmCase t1 cases -> TmCase (walk c t1) (map (\(li, (xi, ti)) -> (li, (xi, walk (c + 1) ti))) cases)
+                TmTag l t1 tyT2 -> TmTag l (walk c t1) (ontype c tyT2)
                 TmUnit -> TmUnit
 
 termShiftAbove :: Int -> Int -> Term -> Term
@@ -196,12 +198,14 @@ printtm ctx b t = case t of
                  in "{" ++ pfs 1 fields ++ "}"
         TmProj t1 l -> printtm ctx False t1 ++ "." ++ l
         TmCase t1 cases ->
-                let palts ctx [] = ""
-                    palts ctx ((li, (xi, ti)) : rest) =
+                let palt (li, (xi, ti)) =
                         let (xi', ctx') = pickfreshname xi ctx
-                         in li ++ " " ++ xi ++ "->" ++ printtm ctx' False ti ++ " | " ++ palts ctx' rest
+                         in li ++ " " ++ xi ++ " -> " ++ printtm ctx' False ti
+                    palts ctx [] = ""
+                    palts ctx [a] = palt a
+                    palts ctx (a : rest) = palt a ++ " | " ++ palts ctx rest
                  in outer b $ "case " ++ printtm ctx False t1 ++ " of {" ++ palts ctx cases ++ "}"
-        TmTag l t1 tyT2 -> "<" ++ l ++ " " ++ printtm ctx True t1 ++ ": " ++ printty ctx False tyT2 ++ ">"
+        TmTag l t1 tyT2 -> "<" ++ l ++ "=" ++ printtm ctx True t1 ++ "> as " ++ printty ctx False tyT2
         TmUnit -> "()"
 
 printty :: Context -> Bool -> Ty -> String

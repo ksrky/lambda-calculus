@@ -44,17 +44,17 @@ pTerm ctx =
                 ( choice
                         [ pTmLet ctx
                         , pTmFix ctx
-                        , pTmRecord ctx
+                        , try $ pTmRecord ctx
                         , pTmCase ctx
                         , pTmTag ctx
-                        , try pTmUnit
-                        , try $ pTmTuple ctx
                         , try $ pTmAbs ctx
-                        , parens $ lexeme $ pTerm ctx
+                        , try pTmUnit
+                        , try $ parens $ lexeme $ pTerm ctx
+                        , pTmTuple ctx
                         , pTmVar ctx
                         ]
                 )
-                [[InfixL $ TmApp <$ symbol " "]]
+                [[InfixL $ try $ TmApp <$ symbol " "]]
                 <?> "`Term`"
 
 pTmVar :: Context -> Parser Term
@@ -97,7 +97,7 @@ pTmFix ctx = do
 pTmTuple :: Context -> Parser Term
 pTmTuple ctx = do
         symbol "("
-        fields <- pTerm ctx `sepBy` symbol ","
+        fields <- pTerm ctx `sepBy1` symbol ","
         string ")"
         let labs = map show [1 ..]
         return $ TmRecord (zip labs fields)
@@ -105,7 +105,7 @@ pTmTuple ctx = do
 pTmRecord :: Context -> Parser Term
 pTmRecord ctx = do
         symbol "{"
-        fields <- pRecordField `sepBy` symbol ","
+        fields <- try (pRecordField `sepBy` symbol ",")
         string "}"
         return $ TmRecord fields
     where
@@ -126,25 +126,20 @@ pTmCase :: Context -> Parser Term
 pTmCase ctx = do
         symbol "case"
         t <- lexeme $ pTerm ctx
-        symbol "of"
+        symbol ";"
         symbol "{"
-        (li, xi) <- lexeme pPat
-        symbol "->"
-        let ctx' = addname xi ctx
-        t1 <- lexeme $ pTerm ctx'
-        alts <- pAlts ctx'
+        alts <- pAlt ctx `sepBy` symbol "|"
         string "}"
         return $ TmCase t alts
     where
-        pAlts :: Context -> Parser [(String, (String, Term))]
-        pAlts ctx = do
-                symbol "|"
+        pAlt :: Context -> Parser (String, (String, Term))
+        pAlt ctx = do
                 (li, xi) <- lexeme pPat
                 symbol "->"
                 let ctx' = addname xi ctx
                 ti <- lexeme $ pTerm ctx'
-                rest <- pAlts ctx'
-                return $ (li, (xi, ti)) : rest
+                symbol ";"
+                return (li, (xi, ti))
 
 pPat :: Parser (String, String)
 pPat = (,) <$> lexeme pLCID <*> pLCID
@@ -153,10 +148,11 @@ pTmTag :: Context -> Parser Term
 pTmTag ctx = do
         symbol "<"
         l <- lexeme pLCID
+        symbol "="
         t1 <- lexeme $ pTerm ctx
-        symbol ":"
-        tyT2 <- lexeme $ pTy ctx
-        string ">"
+        symbol ">"
+        symbol "as"
+        tyT2 <- pTy ctx
         return $ TmTag l t1 tyT2
 
 pTmUnit :: Parser Term
