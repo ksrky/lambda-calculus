@@ -52,3 +52,12 @@ executables:
       - -with-rtsopts=-N
     dependencies:
       - lambda-calculus
+  rectype:
+    main: Main.hs
+    source-dirs: src/rectype
+    ghc-options:
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+    dependencies:
+      - lambda-calculus
