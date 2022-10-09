@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Parser where
+module Parse where
 
 import Control.Monad.Combinators.Expr (
         Operator (InfixL, Postfix, Prefix),
@@ -56,8 +56,9 @@ pTerm ctx =
 pTmVar :: Context -> Parser Term
 pTmVar ctx = do
         x <- pLCID
-        idx <- getVarIndex x ctx
-        return $ TmVar idx (length ctx)
+        case getVarIndex x ctx of
+                Just idx -> return $ TmVar idx (length ctx)
+                Nothing -> fail $ "Unbound variable name: '" ++ x ++ "'"
 
 pTmAbs :: Context -> Parser Term
 pTmAbs ctx = do
@@ -80,7 +81,7 @@ pTmRecord ctx = do
         pRecordField :: Parser (String, Term)
         pRecordField = do
                 li <- lexeme pLCID
-                symbol ":"
+                symbol "="
                 ti <- lexeme $ pTerm ctx
                 return (li, ti)
 
@@ -139,8 +140,9 @@ pTy ctx = do
 pTyVar :: Context -> Parser Ty
 pTyVar ctx = do
         x <- pUCID
-        idx <- getVarIndex x ctx
-        return $ TyVar idx (length ctx)
+        case getVarIndex x ctx of
+                Just idx -> return $ TyVar idx (length ctx)
+                Nothing -> fail $ "Unbound variable name: '" ++ x ++ "'"
 
 pTyRecord :: Context -> Parser Ty
 pTyRecord ctx = do

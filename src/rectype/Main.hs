@@ -1,6 +1,7 @@
 module Main where
 
 import Evaluator
+import Lexer
 import Parser
 import Syntax
 
@@ -45,8 +46,8 @@ processFile n = do
         putStrLn ""
 
 process :: String -> Context -> IO Context
-process inp ctx = case pCommands inp of
-        Left err -> putStrLn (prettyError err) >> return ctx
+process inp ctx = case runAlex inp parse of
+        Left err -> putStrLn err >> return ctx
         Right cmds -> do
                 ctx' <- mapM processCommand cmds `execStateT` ctx
                 return ctx

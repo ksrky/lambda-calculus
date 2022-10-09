@@ -1,43 +1,28 @@
 module Syntax where
 
+{-
 import Control.Exception.Safe
 import Data.List
 
-----------------------------------------------------------------
--- Syntax
-----------------------------------------------------------------
 data Ty
-        = TyVar Int Int
-        | TyArr Ty Ty
-        | TyRecord [(String, Ty)]
-        | TyVariant [(String, Ty)]
-        | TyRec String Ty
-        deriving (Eq, Show)
+        = TyArr Ty Ty
+        | TyId String
+        | TyBool
+        | TyNat
 
 data Term
         = TmVar Int Int
-        | TmAbs String Ty Term
+        | TmAbs String (Maybe Ty) Term
         | TmApp Term Term
-        | TmRecord [(String, Term)]
-        | TmProj Term String
-        | TmCase Term [(String, (String, Term))]
-        | TmTag String Term Ty
-        | TmFold Ty
-        | TmUnfold Ty
-        deriving (Show)
+        | TmLet String Term Term
 
 data Binding
         = NameBind
         | VarBind Ty
-        | TmAbbBind Term (Maybe Ty)
-        | TyVarBind
-        | TyAbbBind Ty
-        deriving (Show)
 
 data Command
-        = Bind String Binding
-        | Eval Term
-        deriving (Show)
+        = Eval Term
+        | Bind String Binding
 
 ----------------------------------------------------------------
 -- Context
@@ -65,9 +50,6 @@ bindingShift :: Int -> Binding -> Binding
 bindingShift d bind = case bind of
         NameBind -> NameBind
         VarBind tyT -> VarBind (typeShift d tyT)
-        TyVarBind -> TyVarBind
-        TmAbbBind t tyT_opt -> TmAbbBind (termShift d t) (typeShift d <$> tyT_opt)
-        TyAbbBind tyT -> TyAbbBind (typeShift d tyT)
 
 getbinding :: Context -> Int -> Binding
 getbinding ctx i = bindingShift (i + 1) (snd $ ctx !! i)
@@ -75,12 +57,12 @@ getbinding ctx i = bindingShift (i + 1) (snd $ ctx !! i)
 getTypeFromContext :: MonadThrow m => Context -> Int -> m Ty
 getTypeFromContext ctx i = case getbinding ctx i of
         VarBind tyT -> return tyT
-        TmAbbBind _ (Just tyT) -> return tyT
-        TmAbbBind _ Nothing -> throwString $ "No type recorded for variable " ++ index2name ctx i
         _ -> throwString $ "Wrong kind of binding for variable " ++ index2name ctx i
 
-getVarIndex :: String -> Context -> Maybe Int
-getVarIndex x ctx = elemIndex x (map fst ctx)
+getVarIndex :: MonadFail m => String -> Context -> m Int
+getVarIndex var ctx = case elemIndex var (map fst ctx) of
+        Just i -> return i
+        Nothing -> fail $ "Unbound variable name: '" ++ var ++ "'"
 
 ----------------------------------------------------------------
 -- Ty
@@ -162,65 +144,4 @@ termSubst j s =
 
 termSubstTop :: Term -> Term -> Term
 termSubstTop s t = termShift (-1) (termSubst 0 (termShift 1 s) t)
-
-----------------------------------------------------------------
--- Printing
-----------------------------------------------------------------
-outer :: Bool -> String -> String
-outer True s = "(" ++ s ++ ")"
-outer False s = s
-
-printtm :: Context -> Bool -> Term -> String
-printtm ctx b t = case t of
-        TmVar x n ->
-                if length ctx == n
-                        then index2name ctx x
-                        else "[bad index]"
-        TmAbs x tyT1 t2 ->
-                let (x', ctx') = pickfreshname x ctx
-                 in outer b $ "λ" ++ x' ++ ": " ++ printty ctx False tyT1 ++ ". " ++ printtm ctx' False t2
-        TmApp t1 t2 -> outer b $ printtm ctx False t1 ++ " " ++ printtm ctx True t2
-        TmRecord fields ->
-                let pf i (li, ti) =
-                        (if show li /= show i then li ++ "=" else "") ++ printtm ctx False ti
-                    pfs i l = case l of
-                        [] -> ""
-                        [f] -> pf i f
-                        f : rest -> pf i f ++ ", " ++ pfs (i + 1) rest
-                 in "{" ++ pfs 1 fields ++ "}"
-        TmProj t1 l -> printtm ctx False t1 ++ "." ++ l
-        TmCase t1 cases ->
-                let palt (li, (xi, ti)) =
-                        let (xi', ctx') = pickfreshname xi ctx
-                         in li ++ " " ++ xi ++ " -> " ++ printtm ctx' False ti
-                    palts ctx [] = ""
-                    palts ctx [a] = palt a
-                    palts ctx (a : rest) = palt a ++ " | " ++ palts ctx rest
-                 in outer b $ "case " ++ printtm ctx False t1 ++ " of {" ++ palts ctx cases ++ "}"
-        TmTag l t1 tyT2 -> "<" ++ l ++ "=" ++ printtm ctx True t1 ++ "> as " ++ printty ctx False tyT2
-        TmFold tyT -> "fold [" ++ printty ctx False tyT ++ "]"
-        TmUnfold tyT -> "unfold [" ++ printty ctx False tyT ++ "]"
-
-printty :: Context -> Bool -> Ty -> String
-printty ctx b ty = case ty of
-        TyVar x n ->
-                if length ctx == n
-                        then index2name ctx x
-                        else "[bad index]"
-        TyArr tyT1 tyT2 -> outer b $ printty ctx True tyT1 ++ " -> " ++ printty ctx False tyT2
-        TyRecord fields ->
-                let pf i (li, tyTi) =
-                        (if show li /= show i then li ++ "=" else "") ++ printty ctx False tyTi
-                    pfs i l = case l of
-                        [] -> ""
-                        [f] -> pf i f
-                        f : rest -> pf i f ++ ", " ++ pfs (i + 1) rest
-                 in "{" ++ pfs 1 fields ++ "}"
-        TyVariant fields ->
-                let pf i (li, tyTi) = li ++ ": " ++ printty ctx False tyTi
-                    pfs i l = case l of
-                        [] -> ""
-                        [f] -> pf i f
-                        f : rest -> pf i f ++ " | " ++ pfs (i + 1) rest
-                 in "<" ++ pfs 1 fields ++ ">"
-        TyRec x tyT -> "μ" ++ x ++ ". " ++ printty ctx False tyT
+-}

@@ -1,5 +1,3 @@
-A;
-
 ListA = <nil:() | cons:{hd:A, tl:ListA}>;
 
 nil = fold [ListA] (<nil=()> as <nil=() | cons={hd:A, tl:ListA}>);
