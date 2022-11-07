@@ -1,4 +1,4 @@
-module SystemF.Evaluator where
+module SystemF.Eval where
 
 import SystemF.Syntax
 

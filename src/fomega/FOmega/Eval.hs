@@ -1,4 +1,4 @@
-module FOmega.Evaluator where
+module FOmega.Eval where
 
 import FOmega.Syntax
 

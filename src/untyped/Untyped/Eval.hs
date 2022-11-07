@@ -1,4 +1,4 @@
-module Untyped.Evaluator where
+module Untyped.Eval where
 
 import Untyped.Syntax (Term (TmAbs, TmApp), termSubstTop)
 

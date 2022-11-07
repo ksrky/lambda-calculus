@@ -1,6 +1,6 @@
 module Main where
 
-import Untyped.Evaluator (eval)
+import Untyped.Eval (eval)
 import Untyped.Parser (parseTerm, prettyError)
 import Untyped.Syntax (emptyContext, printtm)
 

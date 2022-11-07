@@ -1,6 +1,6 @@
 module Main where
 
-import SystemF.Evaluator (eval, typeof)
+import SystemF.Eval (eval, typeof)
 import SystemF.Parser (pCommands, prettyError)
 import SystemF.Syntax (
         Command (..),

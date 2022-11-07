@@ -1,6 +1,6 @@
 module Main where
 
-import Typed.Evaluator (eval, typeof)
+import Typed.Eval (eval, typeof)
 import Typed.Parser (pCommands, prettyError)
 import Typed.Syntax (
         Command (..),

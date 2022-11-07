@@ -1,4 +1,4 @@
-module Typed.Evaluator where
+module Typed.Eval where
 
 import Typed.Syntax
 

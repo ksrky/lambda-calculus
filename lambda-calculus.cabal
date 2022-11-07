@@ -45,7 +45,7 @@ library
 executable fomega
   main-is: Main.hs
   other-modules:
-      FOmega.Evaluator
+      FOmega.Eval
       FOmega.Parser
       FOmega.Syntax
       Paths_lambda_calculus
@@ -111,7 +111,7 @@ executable lambdapi
 executable systemf
   main-is: Main.hs
   other-modules:
-      SystemF.Evaluator
+      SystemF.Eval
       SystemF.Parser
       SystemF.Syntax
       Paths_lambda_calculus
@@ -134,7 +134,7 @@ executable systemf
 executable typed
   main-is: Main.hs
   other-modules:
-      Typed.Evaluator
+      Typed.Eval
       Typed.Parser
       Typed.Syntax
       Paths_lambda_calculus
@@ -157,7 +157,7 @@ executable typed
 executable untyped
   main-is: Main.hs
   other-modules:
-      Untyped.Evaluator
+      Untyped.Eval
       Untyped.Parser
       Untyped.Syntax
       Paths_lambda_calculus

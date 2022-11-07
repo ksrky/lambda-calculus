@@ -1,6 +1,6 @@
 module Main where
 
-import FOmega.Evaluator (eval, typeof)
+import FOmega.Eval (eval, typeof)
 import FOmega.Parser (pCommands, prettyError)
 import FOmega.Syntax (
         Command (..),
