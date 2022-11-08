@@ -88,7 +88,7 @@ executable lambda
 executable lambdapi
   main-is: Main.hs
   other-modules:
-      LambdaPi.Evaluator
+      LambdaPi.Eval
       LambdaPi.Parser
       LambdaPi.Syntax
       Paths_lambda_calculus

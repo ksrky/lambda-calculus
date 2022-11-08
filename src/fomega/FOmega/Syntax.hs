@@ -138,15 +138,14 @@ termShiftAbove d =
 termShift :: Int -> Term -> Term
 termShift d = termShiftAbove d 0
 
-termSubst :: Int -> Term -> Term -> Term
-termSubst j s =
+termSubst :: Term -> Int -> Term -> Term
+termSubst s =
         tmmap
                 (\j x n -> if x == j then termShift j s else TmVar x n)
                 (\j tyT -> tyT)
-                j
 
 termSubstTop :: Term -> Term -> Term
-termSubstTop s t = termShift (-1) (termSubst 0 (termShift 1 s) t)
+termSubstTop s t = termShift (-1) (termSubst (termShift 1 s) 0 t)
 
 tytermSubst :: Ty -> Int -> Term -> Term
 tytermSubst tyS =

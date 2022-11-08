@@ -27,8 +27,11 @@ lexeme = L.lexeme sc
 symbol :: Text -> Parser Text
 symbol = L.symbol sc
 
-pID :: Parser String
-pID = (:) <$> letterChar <*> many alphaNumChar <?> "`ID`"
+pLCID :: Parser String
+pLCID = (:) <$> lowerChar <*> many alphaNumChar <?> "`LCID`"
+
+pUCID :: Parser String
+pUCID = (:) <$> upperChar <*> many alphaNumChar <?> "`UCID`"
 
 parens :: Parser a -> Parser a
 parens = between (symbol "(") (string ")")
@@ -47,49 +50,92 @@ pTerm ctx =
 
 pTmVar :: Context -> Parser Term
 pTmVar ctx = do
-        x <- pID
+        x <- pLCID
         idx <- getVarIndex x ctx
         return $ TmVar idx (length ctx)
 
 pTmAbs :: Context -> Parser Term
 pTmAbs ctx = do
         _ <- symbol "\\"
-        x <- lexeme pID
+        x <- lexeme pLCID
         _ <- symbol ":"
         tyT1 <- pTy ctx
         _ <- symbol "."
-        let ctx' = addname x ctx
+        let ctx' = addName x ctx
         t2 <- pTerm ctx'
         return $ TmAbs x tyT1 t2
-
-pTmPi :: Context -> Parser Term
-pTmPi ctx = do
-        _ <- symbol "foall"
-        x <- lexeme pID
-        _ <- symbol ":"
-        t1 <- pTy ctx
-        _ <- symbol "."
-        let ctx' = addname x ctx
-        t2 <- pTy ctx'
-        return $ TmPi x t1 t2
 
 pTy :: Context -> Parser Ty
 pTy ctx =
         choice
-                [ TyStar <$ string "*"
-                , TyTerm <$> pTerm ctx
+                [ try $ pTyApp ctx
+                , try $ pTyPi ctx
+                , parens $ lexeme $ pTy ctx
+                , pTyVar ctx
                 ]
+                <?> "`Type`"
+
+pTyVar :: Context -> Parser Ty
+pTyVar ctx = do
+        tyX <- pLCID
+        idx <- getVarIndex tyX ctx
+        return $ TyVar idx (length ctx)
+
+pTyApp :: Context -> Parser Ty
+pTyApp ctx = do
+        tyT1 <- pTy ctx
+        t2 <- pTerm ctx
+        return $ TyApp tyT1 t2
+
+pTyPi :: Context -> Parser Ty
+pTyPi ctx = do
+        _ <- symbol "Π"
+        x <- lexeme pLCID
+        _ <- symbol ":"
+        tyT1 <- pTy ctx
+        _ <- symbol "."
+        let ctx' = addName x ctx
+        tyT2 <- pTy ctx'
+        return $ TyPi x tyT1 tyT2
+
+pKind :: Context -> Parser Kind
+pKind ctx =
+        choice
+                [ KnStar <$ symbol "*"
+                , pKnPi ctx
+                , parens $ lexeme $ pKind ctx
+                ]
+                <?> "`Kind`"
+
+pKnPi :: Context -> Parser Kind
+pKnPi ctx = do
+        _ <- symbol "Π"
+        x <- lexeme pLCID
+        _ <- symbol ":"
+        tyT1 <- pTy ctx
+        _ <- symbol "."
+        let ctx' = addName x ctx
+        knK2 <- pKind ctx'
+        return $ KnPi x tyT1 knK2
 
 pCommand :: StateT Context Parser Command
 pCommand =
         try
                 ( do
-                        x <- lift pID
+                        x <- lift pLCID
                         ctx <- get
                         bind <- lift $ pBinder ctx
-                        modify $ \ctx -> addname x ctx
+                        modify $ \ctx -> addName x ctx
                         return $ Bind x bind
                 )
+                <|> try
+                        ( do
+                                x <- lift pUCID
+                                ctx <- get
+                                bind <- lift $ pTyBinder ctx
+                                modify $ \ctx -> addName x ctx
+                                return $ Bind x bind
+                        )
                 <|> ( do
                         ctx <- get
                         t <- lift $ pTerm ctx
@@ -100,6 +146,16 @@ pBinder :: Context -> Parser Binding
 pBinder ctx =
         VarBind <$> (symbol ":" *> pTy ctx)
                 <|> TmAbbBind <$> (symbol "=" *> pTerm ctx) <*> pure Nothing
+
+pTyBinder :: Context -> Parser Binding
+pTyBinder ctx =
+        try
+                ( do
+                        _ <- symbol "="
+                        tyT <- pTy ctx
+                        return $ TyAbbBind tyT Nothing
+                )
+                <|> pure (TyVarBind KnStar)
 
 pCommands :: String -> Either (ParseErrorBundle Text Void) [Command]
 pCommands input = parse (evalStateT (pCommand `endBy` lift (symbol ";")) emptyContext <* eof) "" (pack input)
