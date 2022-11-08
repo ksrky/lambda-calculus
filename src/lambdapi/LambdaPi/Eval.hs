@@ -1,4 +1,4 @@
-module LambdaPi.Evaluator where
+module LambdaPi.Eval where
 
 import Control.Exception.Safe
 import LambdaPi.Syntax
@@ -6,8 +6,13 @@ import LambdaPi.Syntax
 ----------------------------------------------------------------
 -- Evaluation
 ----------------------------------------------------------------
-isval :: a -> Bool
-isval = undefined
+isval :: Context -> Term -> Bool
+isval ctx t = case t of
+        TmVar i _ -> case getBinding ctx i of
+                VarBind{} -> True
+                _ -> False
+        TmAbs{} -> True
+        _ -> False
 
 eval :: Context -> Term -> Term
 eval ctx t = maybe t (eval ctx) (eval' t)
@@ -17,8 +22,8 @@ eval ctx t = maybe t (eval ctx) (eval' t)
                 TmVar i _ -> case getBinding ctx i of
                         TmAbbBind t _ -> Just t
                         _ -> Nothing
-                TmApp (TmAbs x t11 t12) v2 | isval v2 -> Just $ termSubstTop v2 t12
-                TmApp v1 t2 | isval v1 -> do
+                TmApp (TmAbs x t11 t12) v2 | isval ctx v2 -> Just $ termSubstTop v2 t12
+                TmApp v1 t2 | isval ctx v1 -> do
                         t2' <- eval' t2
                         Just $ TmApp v1 t2'
                 TmApp t1 t2 -> do

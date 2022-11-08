@@ -168,17 +168,20 @@ printtm ctx t = case t of
                  in "(λ" ++ x' ++ ": " ++ printty ctx tyT1 ++ ". " ++ printtm ctx' t2 ++ ")"
         TmApp t1 t2 -> "(" ++ printtm ctx t1 ++ " " ++ printtm ctx t2 ++ ")"
 
-printty = undefined
-
-printkn = undefined
-
-{-}
 printty :: Context -> Ty -> String
-printty ctx tyT = case tyT of
-        TyTerm t -> printtm ctx t
-        TyStar -> "*"
-                TmPi x t1 t2 ->
-                let (x', ctx') = pickfreshname x ctx
-                 in "(∀" ++ x' ++ ": " ++ printty ctx t1 ++ ". " ++ printty ctx' t2 ++ ")"
+printty ctx ty = case ty of
+        TyVar x n ->
+                if length ctx == n
+                        then index2name ctx x
+                        else "[bad index]" ++ show (length ctx) ++ show n
+        TyApp tyT1 t2 -> "(" ++ printty ctx tyT1 ++ " " ++ printtm ctx t2 ++ ")"
+        TyPi x tyT1 tyT2 ->
+                let (x', ctx') = pickFreshname x ctx
+                 in "(Π" ++ x' ++ ":" ++ printty ctx tyT1 ++ ". " ++ printty ctx' tyT2 ++ ")"
 
--}
+printkn :: Context -> Kind -> String
+printkn ctx knK = case knK of
+        KnStar -> "*"
+        KnPi x tyT1 knK2 ->
+                let (x', ctx') = pickFreshname x ctx
+                 in "(Π" ++ x' ++ ":" ++ printty ctx tyT1 ++ ". " ++ printkn ctx' knK2 ++ ")"

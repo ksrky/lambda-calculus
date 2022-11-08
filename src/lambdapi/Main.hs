@@ -1,10 +1,11 @@
 module Main where
 
-import LambdaPi.Evaluator
+import LambdaPi.Eval
 import LambdaPi.Parser
 import LambdaPi.Syntax
 
 import Control.Exception.Safe (MonadThrow)
+import Control.Monad
 import Control.Monad.State (
         MonadIO (..),
         MonadState (get),
@@ -54,18 +55,17 @@ process :: String -> Context -> IO Context
 process inp ctx = case pCommands inp of
         Left err -> putStrLn (prettyError err) >> return ctx
         Right cmds -> do
-                ctx' <- mapM processCommand cmds `execStateT` ctx
+                ctx' <- foldM processCommand ctx cmds
                 return ctx
 
-processCommand :: (MonadThrow m, MonadIO m) => Command -> StateT Context m ()
-processCommand cmd = case cmd of
-        Eval t -> do
-                ctx <- get
-                tyT <- typeof ctx t
-                let t' = eval ctx t
-                liftIO $ do
-                        putStrLn $ "  " ++ printtm ctx t
-                        putStr $ "> " ++ printtm ctx t'
-                        putStr " : "
-                        putStrLn $ printty ctx tyT
-        Bind x bind -> modify $ addbinding x bind
+processCommand :: (MonadThrow m, MonadIO m) => Context -> Command -> m Context
+processCommand ctx (Eval t) = do
+        tyT <- typeof ctx t
+        let t' = eval ctx t
+        liftIO $ do
+                putStrLn $ "  " ++ printtm ctx t
+                putStr $ "> " ++ printtm ctx t'
+                putStr " : "
+                putStrLn $ printty ctx tyT
+        return ctx
+processCommand ctx (Bind x bind) = return $ addBinding x bind ctx
