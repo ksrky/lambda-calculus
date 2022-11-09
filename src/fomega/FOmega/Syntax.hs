@@ -72,15 +72,15 @@ bindingShift d bind = case bind of
 getBinding :: Context -> Int -> Binding
 getBinding ctx i = bindingShift (i + 1) (snd $ ctx !! i)
 
-getTypeFromContext :: MonadFail m => Context -> Int -> m Ty
-getTypeFromContext ctx i = case getBinding ctx i of
+getType :: MonadFail m => Context -> Int -> m Ty
+getType ctx i = case getBinding ctx i of
         VarBind tyT -> return tyT
         TmAbbBind _ (Just tyT) -> return tyT
         TmAbbBind _ Nothing -> fail $ "No type recorded for variable " ++ index2name ctx i
         _ -> fail $ "Wrong kind of binding for variable " ++ index2name ctx i
 
-getKindFromContext :: MonadFail m => Context -> Int -> m Kind
-getKindFromContext ctx i = case getBinding ctx i of
+getKind :: MonadFail m => Context -> Int -> m Kind
+getKind ctx i = case getBinding ctx i of
         TyVarBind knK -> return knK
         TyAbbBind _ (Just knK) -> return knK
         TyAbbBind _ Nothing -> fail $ "No kind recorded for variable " ++ index2name ctx i

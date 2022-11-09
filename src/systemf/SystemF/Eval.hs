@@ -76,7 +76,7 @@ tyeqv ctx tyS tyT = do
 
 typeof :: MonadFail m => Context -> Term -> m Ty
 typeof ctx t = case t of
-        TmVar i _ -> getTypeFromContext ctx i
+        TmVar i _ -> getType ctx i
         TmAbs x tyT1 t2 -> do
                 let ctx' = addBinding x (VarBind tyT1) ctx
                 tyT2 <- typeof ctx' t2

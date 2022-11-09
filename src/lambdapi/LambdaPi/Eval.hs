@@ -8,8 +8,8 @@ import LambdaPi.Syntax (
         Ty (..),
         addBinding,
         getBinding,
-        getKindFromContext,
-        getTypeFromContext,
+        getKind,
+        getType,
         printkn,
         printty,
         termSubstTop,
@@ -169,7 +169,7 @@ checkType ctx t tyT = do
         tyeqv ctx tyT tyT'
 
 typeof :: MonadFail m => Context -> Term -> m Ty
-typeof ctx (TmVar i _) = getTypeFromContext ctx i
+typeof ctx (TmVar i _) = getType ctx i
 typeof ctx (TmApp t1 t2) = do
         tyT1 <- typeof ctx t1
         tyT2 <- typeof ctx t2
@@ -193,7 +193,7 @@ checkKnStar ctx tyT = do
         kneqv ctx knK KnStar
 
 kindof :: MonadFail m => Context -> Ty -> m Kind
-kindof ctx (TyVar i _) = getKindFromContext ctx i
+kindof ctx (TyVar i _) = getKind ctx i
 kindof ctx (TyApp tyS1 t2) = do
         knK1 <- kindof ctx tyS1
         tyT2 <- typeof ctx t2

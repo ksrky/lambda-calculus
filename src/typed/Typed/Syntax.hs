@@ -54,8 +54,8 @@ index2name ctx x = fst (ctx !! x)
 getBinding :: Context -> Int -> Binding
 getBinding ctx i = snd $ ctx !! i
 
-getTypeFromContext :: MonadFail m => Context -> Int -> m Ty
-getTypeFromContext ctx i = case ctx !! i of
+getType :: MonadFail m => Context -> Int -> m Ty
+getType ctx i = case ctx !! i of
         (_, VarBind tyT) -> return tyT
         _ -> fail $ "Wrong kind of binding for variable " ++ index2name ctx i
 

@@ -92,7 +92,7 @@ tyeqv ctx tyS tyT = do
 ----------------------------------------------------------------
 typeof :: MonadFail m => Context -> Term -> m Ty
 typeof ctx t = case t of
-        TmVar i _ -> getTypeFromContext ctx i
+        TmVar i _ -> getType ctx i
         TmApp t1 t2 -> do
                 tyT1 <- typeof ctx t1
                 tyT2 <- typeof ctx t2
@@ -130,7 +130,7 @@ checkKnStar ctx tyT = do
 
 kindof :: MonadFail m => Context -> Ty -> m Kind
 kindof ctx tyT = case tyT of
-        TyVar i _ -> getKindFromContext ctx i
+        TyVar i _ -> getKind ctx i
         TyArr tyT1 tyT2 -> do
                 checkKnStar ctx tyT1
                 checkKnStar ctx tyT2
