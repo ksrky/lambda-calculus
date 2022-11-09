@@ -9,7 +9,7 @@ import FOmega.Syntax (
         Kind (..),
         Term (..),
         Ty (..),
-        addname,
+        addName,
         emptyContext,
         getVarIndex,
  )
@@ -101,7 +101,7 @@ pTmAbs ctx = do
         _ <- symbol ":"
         tyT1 <- lexeme $ pTy ctx
         _ <- symbol "."
-        let ctx' = addname x ctx
+        let ctx' = addName x ctx
         t2 <- pTerm ctx'
         return $ TmAbs x tyT1 t2
 
@@ -112,7 +112,7 @@ pTmTAbs ctx = do
         _ <- symbol ":"
         knK1 <- lexeme pKind
         _ <- symbol "."
-        let ctx' = addname tyX ctx
+        let ctx' = addName tyX ctx
         t2 <- pTerm ctx'
         return $ TmTAbs tyX knK1 t2
 
@@ -146,7 +146,7 @@ pTyAll ctx = do
         _ <- symbol "::"
         knK1 <- lexeme pKind
         _ <- symbol "."
-        let ctx' = addname x ctx
+        let ctx' = addName x ctx
         tyT2 <- pTy ctx'
         return $ TyAll x knK1 tyT2
 
@@ -160,7 +160,7 @@ pCommand =
                         x <- lift pLCID
                         ctx <- get
                         bind <- lift $ pBinder ctx
-                        modify $ \ctx -> addname x ctx
+                        modify $ \ctx -> addName x ctx
                         return $ Bind x bind
                 )
                 <|> try
@@ -168,7 +168,7 @@ pCommand =
                                 x <- lift pUCID
                                 ctx <- get
                                 bind <- lift $ pTyBinder ctx
-                                modify $ \ctx -> addname x ctx
+                                modify $ \ctx -> addName x ctx
                                 return $ Bind x bind
                         )
                 <|> ( do

@@ -2,6 +2,17 @@
 
 module SystemF.Parser where
 
+import SystemF.Syntax (
+        Binding (TmAbbBind, TyAbbBind, TyVarBind, VarBind),
+        Command (..),
+        Context,
+        Term (..),
+        Ty (..),
+        addName,
+        emptyContext,
+        getVarIndex,
+ )
+
 import Control.Monad.Combinators.Expr (
         Operator (InfixL, Postfix, Prefix),
         makeExprParser,
@@ -15,16 +26,6 @@ import Control.Monad.State (
  )
 import Data.Text (Text, pack)
 import Data.Void (Void)
-import SystemF.Syntax (
-        Binding (TmAbbBind, TyAbbBind, TyVarBind, VarBind),
-        Command (..),
-        Context,
-        Term (..),
-        Ty (..),
-        addname,
-        emptyContext,
-        getVarIndex,
- )
 import Text.Megaparsec (
         MonadParsec (eof, try),
         ParseErrorBundle,
@@ -98,21 +99,21 @@ pTmAbs ctx = do
         _ <- symbol ":"
         tyT1 <- lexeme $ pTy ctx
         _ <- symbol "."
-        let ctx' = addname x ctx
+        let ctx' = addName x ctx
         t2 <- pTerm ctx'
         return $ TmAbs x tyT1 t2
+
+pTmTApp :: Context -> Parser Term
+pTmTApp ctx = TmTApp <$> lexeme (parens $ lexeme $ pTerm ctx) <*> between (symbol "[") (string "]") (lexeme $ pTy ctx)
 
 pTmTAbs :: Context -> Parser Term
 pTmTAbs ctx = do
         _ <- symbol "\\"
         tyX <- lexeme pUCID
         _ <- symbol "."
-        let ctx' = addname tyX ctx
+        let ctx' = addName tyX ctx
         t2 <- pTerm ctx'
         return $ TmTAbs tyX t2
-
-pTmTApp :: Context -> Parser Term
-pTmTApp ctx = TmTApp <$> lexeme (parens $ lexeme $ pTerm ctx) <*> between (symbol "[") (string "]") (lexeme $ pTy ctx)
 
 pTy :: Context -> Parser Ty
 pTy ctx = makeExprParser (choice [try $ pTyAll ctx, pTyVar ctx]) [[InfixL $ TyArr <$ symbol "->"]] <?> "`Type`"
@@ -128,7 +129,7 @@ pTyAll ctx = do
         _ <- symbol "forall"
         x <- lexeme pUCID
         _ <- symbol "."
-        let ctx' = addname x ctx
+        let ctx' = addName x ctx
         tyT2 <- pTy ctx'
         return $ TyAll x tyT2
 
@@ -139,7 +140,7 @@ pCommand =
                         x <- lift pLCID
                         ctx <- get
                         bind <- lift $ pBinder ctx
-                        modify $ \ctx -> addname x ctx
+                        modify $ \ctx -> addName x ctx
                         return $ Bind x bind
                 )
                 <|> try
@@ -147,7 +148,7 @@ pCommand =
                                 x <- lift pUCID
                                 ctx <- get
                                 bind <- lift $ pTyBinder ctx
-                                modify $ \ctx -> addname x ctx
+                                modify $ \ctx -> addName x ctx
                                 return $ Bind x bind
                         )
                 <|> ( do

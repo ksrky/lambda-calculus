@@ -1,19 +1,18 @@
 module Main where
 
-import LambdaPi.Eval
-import LambdaPi.Parser
-import LambdaPi.Syntax
-
-import Control.Exception.Safe (MonadThrow)
-import Control.Monad
-import Control.Monad.State (
-        MonadIO (..),
-        MonadState (get),
-        StateT,
-        execStateT,
-        modify,
+import LambdaPi.Eval (eval, typeof)
+import LambdaPi.Parser (pCommands, prettyError)
+import LambdaPi.Syntax (
+        Command (..),
+        Context,
+        addBinding,
+        emptyContext,
+        printtm,
+        printty,
  )
-import Control.Monad.Trans (MonadIO (liftIO))
+
+import Control.Monad (foldM)
+import Control.Monad.IO.Class (MonadIO (..))
 import System.Console.Haskeline (
         InputT,
         defaultSettings,
@@ -54,11 +53,9 @@ processFile n = do
 process :: String -> Context -> IO Context
 process inp ctx = case pCommands inp of
         Left err -> putStrLn (prettyError err) >> return ctx
-        Right cmds -> do
-                ctx' <- foldM processCommand ctx cmds
-                return ctx
+        Right cmds -> foldM processCommand ctx cmds
 
-processCommand :: (MonadThrow m, MonadIO m) => Context -> Command -> m Context
+processCommand :: (MonadFail m, MonadIO m) => Context -> Command -> m Context
 processCommand ctx (Eval t) = do
         tyT <- typeof ctx t
         let t' = eval ctx t

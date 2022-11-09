@@ -8,7 +8,7 @@ import Typed.Syntax (
         Context,
         Term (..),
         Ty (..),
-        addname,
+        addName,
         emptyContext,
         getVarIndex,
  )
@@ -100,7 +100,7 @@ pTmAbs ctx = do
         _ <- symbol ":"
         tyT1 <- lexeme pTy
         _ <- symbol "."
-        let ctx' = addname x ctx
+        let ctx' = addName x ctx
         t2 <- pTerm ctx'
         return $ TmAbs x tyT1 t2
 
@@ -117,7 +117,7 @@ pCommand =
                         x <- lift pLCID
                         _ <- lift $ symbol ":"
                         ty <- lift pTy
-                        modify $ \ctx -> addname x ctx
+                        modify $ \ctx -> addName x ctx
                         return $ Bind x (VarBind ty)
                 )
                 <|> ( do

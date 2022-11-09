@@ -1,8 +1,6 @@
 module LambdaPi.Syntax where
 
-import Control.Exception.Safe
-import Control.Monad.State
-import Data.List
+import Data.List (elemIndex)
 
 ----------------------------------------------------------------
 -- Syntax
@@ -70,18 +68,18 @@ bindingShift d bind = case bind of
 getBinding :: Context -> Int -> Binding
 getBinding ctx i = bindingShift (i + 1) (snd $ ctx !! i)
 
-getTypeFromContext :: MonadThrow m => Context -> Int -> m Ty
+getTypeFromContext :: MonadFail m => Context -> Int -> m Ty
 getTypeFromContext ctx i = case getBinding ctx i of
         VarBind tyT -> return tyT
         TmAbbBind _ (Just tyT) -> return tyT
-        TmAbbBind _ Nothing -> throwString $ "No type recorded for variable " ++ index2name ctx i
-        _ -> throwString $ "Wrong kind of binding for variable " ++ index2name ctx i
+        TmAbbBind _ Nothing -> fail $ "No type recorded for variable " ++ index2name ctx i
+        _ -> fail $ "Wrong kind of binding for variable " ++ index2name ctx i
 
-getKindFromContext :: MonadThrow m => Context -> Int -> m Kind
+getKindFromContext :: MonadFail m => Context -> Int -> m Kind
 getKindFromContext ctx i = case getBinding ctx i of
         TyVarBind knK -> return knK
         TyAbbBind _ (Just knK) -> return knK
-        _ -> throwString $ "Wrong kind of binding for type " ++ index2name ctx i
+        _ -> fail $ "Wrong kind of binding for type " ++ index2name ctx i
 
 getVarIndex :: MonadFail m => String -> Context -> m Int
 getVarIndex var ctx = case elemIndex var (map fst ctx) of
@@ -103,9 +101,9 @@ termShiftAbove :: Int -> Int -> Term -> Term
 termShiftAbove d =
         tmmap
                 ( \c x n ->
-                        if x >= c
-                                then TmVar (x + d) (n + d)
-                                else TmVar x (n + d)
+                        if x < c
+                                then TmVar x (n + d)
+                                else TmVar (x + d) (n + d)
                 )
                 (typeShiftAbove d)
 
@@ -115,20 +113,15 @@ termShift d = termShiftAbove d 0
 termSubst :: Term -> Int -> Term -> Term
 termSubst s =
         tmmap
-                (\j x n -> if x == j then termShift j s else TmVar x n)
+                ( \j x n ->
+                        if x == j
+                                then termShift j s
+                                else TmVar x n
+                )
                 (\j tyT -> tyT)
 
 termSubstTop :: Term -> Term -> Term
 termSubstTop s t = termShift (-1) (termSubst (termShift 1 s) 0 t)
-
-termtySubst :: Term -> Int -> Ty -> Ty
-termtySubst s =
-        tymap
-                (\c x n -> TyVar x n)
-                (termSubst s)
-
-termtySubstTop :: Term -> Ty -> Ty
-termtySubstTop s tyT = typeShift (-1) (termtySubst (termShift 1 s) 0 tyT)
 
 ----------------------------------------------------------------
 -- Type
@@ -145,14 +138,23 @@ typeShiftAbove :: Int -> Int -> Ty -> Ty
 typeShiftAbove d =
         tymap
                 ( \c x n ->
-                        if x >= c
-                                then TyVar (x + d) (n + d)
-                                else TyVar x (n + d)
+                        if x < c
+                                then TyVar x (n + d)
+                                else TyVar (x + d) (n + d)
                 )
                 (termShiftAbove d)
 
 typeShift :: Int -> Ty -> Ty
 typeShift d = typeShiftAbove d 0
+
+termtySubst :: Term -> Int -> Ty -> Ty
+termtySubst s =
+        tymap
+                (\c x n -> TyVar x n)
+                (termSubst s)
+
+termtySubstTop :: Term -> Ty -> Ty
+termtySubstTop s tyT = typeShift (-1) (termtySubst (termShift 1 s) 0 tyT)
 
 ----------------------------------------------------------------
 -- Printing
@@ -163,17 +165,17 @@ printtm ctx t = case t of
                 if length ctx == n
                         then index2name ctx x
                         else "[bad index]"
+        TmApp t1 t2 -> "(" ++ printtm ctx t1 ++ " " ++ printtm ctx t2 ++ ")"
         TmAbs x tyT1 t2 ->
                 let (x', ctx') = pickFreshname x ctx
                  in "(λ" ++ x' ++ ": " ++ printty ctx tyT1 ++ ". " ++ printtm ctx' t2 ++ ")"
-        TmApp t1 t2 -> "(" ++ printtm ctx t1 ++ " " ++ printtm ctx t2 ++ ")"
 
 printty :: Context -> Ty -> String
 printty ctx ty = case ty of
         TyVar x n ->
                 if length ctx == n
                         then index2name ctx x
-                        else "[bad index]" ++ show (length ctx) ++ show n
+                        else "[bad index]"
         TyApp tyT1 t2 -> "(" ++ printty ctx tyT1 ++ " " ++ printtm ctx t2 ++ ")"
         TyPi x tyT1 tyT2 ->
                 let (x', ctx') = pickFreshname x ctx

@@ -1,7 +1,7 @@
 module Main where
 
 import Untyped.Eval (eval)
-import Untyped.Parser (parseTerm, prettyError)
+import Untyped.Parser (pTerms, prettyError)
 import Untyped.Syntax (emptyContext, printtm)
 
 import Control.Monad.Trans (MonadIO (liftIO))
@@ -38,9 +38,8 @@ processFile n = do
         putStrLn $ "  " ++ contents
         putStr "> "
         process contents
-        putStrLn ""
 
 process :: String -> IO ()
-process inp = case parseTerm inp of
+process inp = case pTerms inp of
         Left err -> putStrLn $ prettyError err
-        Right term -> putStrLn $ printtm emptyContext (eval term)
+        Right ts -> mapM_ (putStrLn . printtm emptyContext . eval) ts

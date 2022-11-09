@@ -40,7 +40,7 @@ pTerm :: Context -> Parser Term
 pTerm ctx =
         makeExprParser
                 ( choice
-                        [ try $ pTmAbs ctx
+                        [ pTmAbs ctx
                         , parens $ lexeme $ pTerm ctx
                         , pTmVar ctx
                         ]
