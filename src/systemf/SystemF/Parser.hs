@@ -14,7 +14,7 @@ import SystemF.Syntax (
  )
 
 import Control.Monad.Combinators.Expr (
-        Operator (InfixL, Postfix, Prefix),
+        Operator (InfixL),
         makeExprParser,
  )
 import Control.Monad.State (

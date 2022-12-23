@@ -14,7 +14,6 @@ import LambdaPi.Syntax (
         printty,
         termSubstTop,
         termtySubstTop,
-        typeShift,
  )
 
 ----------------------------------------------------------------
@@ -36,7 +35,7 @@ eval ctx t = maybe t (eval ctx) (eval' t)
                 TmVar i _ -> case getBinding ctx i of
                         TmAbbBind t _ -> Just t
                         _ -> Nothing
-                TmApp (TmAbs x t11 t12) v2 | isval ctx v2 -> Just $ termSubstTop v2 t12
+                TmApp (TmAbs _ _ t12) v2 | isval ctx v2 -> Just $ termSubstTop v2 t12
                 TmApp v1 t2 | isval ctx v1 -> do
                         t2' <- eval' t2
                         Just $ TmApp v1 t2'
@@ -89,7 +88,7 @@ tmeqv ctx s t = do
                         case tyS1 of
                                 TyPi _ tyS11 _ -> tyeqv ctx tyS11 tyS2
                                 _ -> fail ""
-                (TmApp (TmAbs x tyS1 t1) s2, t2) -> do
+                (TmApp (TmAbs x tyS1 _) _, _) -> do
                         let ctx' = addBinding x (VarBind tyS1) ctx
                         checkType ctx' s tyS1
                 _ -> fail ""
@@ -99,7 +98,7 @@ tmeqv ctx s t = do
 ----------------------------------------------------------------
 istyabb :: Context -> Int -> Bool
 istyabb ctx i = case getBinding ctx i of
-        TyAbbBind tyT _ -> True
+        TyAbbBind{} -> True
         _ -> False
 
 gettyabb :: Context -> Int -> Ty
@@ -135,7 +134,7 @@ tyeqv ctx tyS tyT = do
                         knK1 <- kindof ctx tyS1
                         tyT2 <- typeof ctx t2
                         case knK1 of
-                                KnPi _ tyT11 knK12 -> tyeqv ctx tyT11 tyT2
+                                KnPi _ tyT11 _ -> tyeqv ctx tyT11 tyT2
                                 _ -> fail ""
                         tmeqv ctx t1 t2
                 (TyPi x tyS1 tyS2, TyPi y tyT1 tyT2) | x == y -> do
@@ -152,7 +151,7 @@ tyeqv ctx tyS tyT = do
 -- Kind equivalence
 ----------------------------------------------------------------
 kneqv :: MonadFail m => Context -> Kind -> Kind -> m ()
-kneqv ctx KnStar KnStar = return ()
+kneqv _ KnStar KnStar = return ()
 kneqv ctx (KnPi x tyT1 knK1) (KnPi _ tyT2 knK2) = do
         tyeqv ctx tyT1 tyT2
         checkKnStar ctx tyT2
@@ -174,7 +173,7 @@ typeof ctx (TmApp t1 t2) = do
         tyT1 <- typeof ctx t1
         tyT2 <- typeof ctx t2
         case tyT1 of
-                TyPi x tyS11 tyT12 -> do
+                TyPi _ tyS11 tyT12 -> do
                         tyeqv ctx tyS11 tyT2
                         return tyT12
                 _ -> fail ""

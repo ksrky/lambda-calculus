@@ -1,6 +1,5 @@
 module FOmega.Syntax where
 
-import Control.Monad.State (MonadState (get, put), StateT, modify)
 import Data.List (elemIndex)
 
 ----------------------------------------------------------------
@@ -125,7 +124,7 @@ termSubst s =
                                 then termShift j s
                                 else TmVar x n
                 )
-                (\j tyT -> tyT)
+                (\_ tyT -> tyT)
 
 termSubstTop :: Term -> Term -> Term
 termSubstTop s t = termShift (-1) (termSubst (termShift 1 s) 0 t)
@@ -133,7 +132,7 @@ termSubstTop s t = termShift (-1) (termSubst (termShift 1 s) 0 t)
 tytermSubst :: Ty -> Int -> Term -> Term
 tytermSubst tyS =
         tmmap
-                (\c x n -> TmVar x n)
+                (\_ x n -> TmVar x n)
                 (typeSubst tyS)
 
 tytermSubstTop :: Ty -> Term -> Term
@@ -199,11 +198,11 @@ printty ctx ty = case ty of
         TyArr tyT1 tyT2 -> "(" ++ printty ctx tyT1 ++ " -> " ++ printty ctx tyT2 ++ ")"
         TyAll tyX knK1 tyT2 ->
                 let (tyX', ctx') = pickFreshname tyX ctx
-                 in "(∀" ++ tyX ++ ": " ++ printkn knK1 ++ ". " ++ printty ctx' tyT2 ++ ")"
+                 in "(∀" ++ tyX' ++ ": " ++ printkn knK1 ++ ". " ++ printty ctx' tyT2 ++ ")"
         TyApp tyT1 tyT2 -> "(" ++ printty ctx tyT1 ++ " " ++ printty ctx tyT2 ++ ")"
         TyAbs tyX knK1 tyT2 ->
                 let (tyX', ctx') = pickFreshname tyX ctx
-                 in "(λ" ++ tyX ++ ": " ++ printkn knK1 ++ ". " ++ printty ctx' tyT2 ++ ")"
+                 in "(λ" ++ tyX' ++ ": " ++ printkn knK1 ++ ". " ++ printty ctx' tyT2 ++ ")"
 
 printkn :: Kind -> String
 printkn kn = case kn of

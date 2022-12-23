@@ -24,12 +24,11 @@ source-repository head
   location: https://github.com/ksrky/lambda-calculus
 
 library
-  exposed-modules:
-      Main
   other-modules:
       Paths_lambda_calculus
   hs-source-dirs:
       src
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wno-name-shadowing
   build-depends:
       base >=4.7 && <5
     , directory
@@ -51,27 +50,7 @@ executable fomega
       Paths_lambda_calculus
   hs-source-dirs:
       src/fomega
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
-  build-depends:
-      base >=4.7 && <5
-    , directory
-    , haskeline
-    , hspec
-    , lambda-calculus
-    , megaparsec
-    , mtl
-    , parser-combinators
-    , safe-exceptions
-    , text
-  default-language: Haskell2010
-
-executable lambda
-  main-is: Main.hs
-  other-modules:
-      Paths_lambda_calculus
-  hs-source-dirs:
-      src
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wno-name-shadowing -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
     , directory
@@ -94,7 +73,7 @@ executable lambdapi
       Paths_lambda_calculus
   hs-source-dirs:
       src/lambdapi
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wno-name-shadowing -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
     , directory
@@ -117,7 +96,7 @@ executable systemf
       Paths_lambda_calculus
   hs-source-dirs:
       src/systemf
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wno-name-shadowing -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
     , directory
@@ -140,7 +119,7 @@ executable typed
       Paths_lambda_calculus
   hs-source-dirs:
       src/typed
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wno-name-shadowing -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
     , directory
@@ -163,7 +142,7 @@ executable untyped
       Paths_lambda_calculus
   hs-source-dirs:
       src/untyped
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wno-name-shadowing -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
     , directory

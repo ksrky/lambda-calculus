@@ -25,7 +25,6 @@ import Control.Monad.State (
         evalStateT,
         modify,
  )
-import Data.List (elemIndex)
 import Data.Text (Text, pack)
 import Data.Void (Void)
 import Text.Megaparsec (

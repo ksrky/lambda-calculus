@@ -20,15 +20,15 @@ eval ctx t = maybe t (eval ctx) (eval' t)
     where
         eval' :: Term -> Maybe Term
         eval' t = case t of
-                TmApp (TmAbs x ty t12) v2 | isval ctx v2 -> Just $ termSubstTop v2 t12
+                TmApp (TmAbs _ _ t12) v2 | isval ctx v2 -> Just $ termSubstTop v2 t12
                 TmApp v1 t2 | isval ctx v1 -> do
                         t2' <- eval' t2
                         Just $ TmApp v1 t2'
                 TmApp t1 t2 -> do
                         t1' <- eval' t1
                         Just $ TmApp t1' t2
-                TmIf TmTrue t2 t3 -> return t2
-                TmIf TmFalse t2 t3 -> return t3
+                TmIf TmTrue t2 _ -> return t2
+                TmIf TmFalse _ t3 -> return t3
                 TmIf t1 t2 t3 -> do
                         t1' <- eval' t1
                         return $ TmIf t1' t2 t3

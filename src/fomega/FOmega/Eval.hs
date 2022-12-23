@@ -2,8 +2,6 @@ module FOmega.Eval where
 
 import FOmega.Syntax
 
-import Control.Monad.State
-
 ----------------------------------------------------------------
 -- Evaluation
 ----------------------------------------------------------------
@@ -24,14 +22,14 @@ eval ctx t = maybe t (eval ctx) (eval' t)
                 TmVar i _ -> case getBinding ctx i of
                         TmAbbBind t _ -> Just t
                         _ -> Nothing
-                TmApp (TmAbs x ty t12) v2 | isval ctx v2 -> Just $ termSubstTop v2 t12
+                TmApp (TmAbs _ _ t12) v2 | isval ctx v2 -> Just $ termSubstTop v2 t12
                 TmApp v1 t2 | isval ctx v1 -> do
                         t2' <- eval' t2
                         Just $ TmApp v1 t2'
                 TmApp t1 t2 -> do
                         t1' <- eval' t1
                         Just $ TmApp t1' t2
-                TmTApp (TmTAbs x _ t11) tyT2 -> Just $ tytermSubstTop tyT2 t11
+                TmTApp (TmTAbs _ _ t11) tyT2 -> Just $ tytermSubstTop tyT2 t11
                 TmTApp t1 tyT2 -> do
                         t1' <- eval' t1
                         Just $ TmTApp t1' tyT2
@@ -61,7 +59,7 @@ simplifyty ctx tyT =
         let tyT' = case tyT of
                 TyApp tyT1 tyT2 -> TyApp (simplifyty ctx tyT1) tyT2
                 _ -> tyT
-         in case computety ctx tyT of
+         in case computety ctx tyT' of
                 Just tyT' -> simplifyty ctx tyT'
                 Nothing -> tyT
 
@@ -110,8 +108,9 @@ typeof ctx t = case t of
                 knKT2 <- kindof ctx tyT2
                 tyT1 <- typeof ctx t1
                 case simplifyty ctx tyT1 of
-                        TyAll _ knK11 tyT12 | knK11 == knKT2 -> return $ typeSubstTop tyT2 tyT12
-                        TyAll _ knK11 tyT12 -> fail "Type argument has wrong kind"
+                        TyAll _ knK11 tyT12
+                                | knK11 == knKT2 -> return $ typeSubstTop tyT2 tyT12
+                                | otherwise -> fail "Type argument has wrong kind"
                         _ -> fail "universal type expected"
         TmTAbs tyX knK1 t2 -> do
                 let ctx' = addBinding tyX (TyVarBind knK1) ctx
@@ -143,8 +142,9 @@ kindof ctx tyT = case tyT of
                 knK1 <- kindof ctx tyT1
                 knK2 <- kindof ctx tyT2
                 case knK1 of
-                        KnArr knK11 knK12 | knK2 == knK11 -> return knK12
-                        KnArr knK11 knK12 -> fail "parameter kind mismatch"
+                        KnArr knK11 knK12
+                                | knK2 == knK11 -> return knK12
+                                | otherwise -> fail "parameter kind mismatch"
                         _ -> fail "arrow kind expected"
         TyAll tyX knK1 tyT2 -> do
                 let ctx' = addBinding tyX (TyVarBind knK1) ctx

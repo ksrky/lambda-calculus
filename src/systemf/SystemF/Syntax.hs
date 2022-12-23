@@ -114,13 +114,13 @@ termSubst s =
                                 then termShift j s
                                 else TmVar x n
                 )
-                (\j tyT -> tyT)
+                (\_ tyT -> tyT)
 
 termSubstTop :: Term -> Term -> Term
 termSubstTop s t = termShift (-1) (termSubst (termShift 1 s) 0 t)
 
 tytermSubst :: Ty -> Int -> Term -> Term
-tytermSubst tyS = tmmap (\c x n -> TmVar x n) (typeSubst tyS)
+tytermSubst tyS = tmmap (\_ x n -> TmVar x n) (typeSubst tyS)
 
 tytermSubstTop :: Ty -> Term -> Term
 tytermSubstTop tyS t = termShift (-1) (tytermSubst (typeShift 1 tyS) 0 t)
