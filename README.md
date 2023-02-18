@@ -5,6 +5,7 @@ Gradual extension from untyped lambda calculus to Calculus of Construction (CoC)
 ### Referenced documents
 
 - Benjamin C. Pierce, Types and Programming Languages (TaPL)
+- Benjamin C. Pierce, Advanced Topics in Types and Programming Languages
 - Andres Löh, Conor McBride, and Wouter Swierstra. 2010. A Tutorial Implementation of a Dependently Typed Lambda Calculus. Fundam. Inf. 102, 2 (April 2010), 177–207.
 
 ## [untyped](https://github.com/ksrky/lambda-calculus/tree/master/src/untyped)
@@ -113,48 +114,23 @@ t ::=                       :terms
       x                     variable
       \x:t.t                abstraction
       t t                   application
-      x:t->t                dependent function space
-      *                     type of types
-```
 
-note: Quantification of a variable is limited to the term level.
+T ::=                       :types
+      X                     type/family variable
+      Πx:T.T                dependent product type
+      T t                   type family application
+
+K ::=                       :kinds
+      *                     kind of proper types
+      Πx:T.K                kind of type families
+```
 
 ### Reference
 
-- A Tutorial Implementation of a Dependently Typed Lambda Calculus, section 3
-
-## lambdapi2
-
-$\lambda \Pi 2$: Lambda Pi2 / Second-order predicate logic
-
-### Syntax
-
-```
-t ::=                       :terms
-      x                     variable
-      \x:t.t                abstraction
-      t t                   application
-      x:t->t                dependent function space
-      *                     type of types
-```
-
-note: Quantification of a variable is limited to the type level.
-
-not yet
+- Advanced Topics in Types and Programming Languages, section 2.2
 
 ## coc
 
 $\lambda \mathrm{C}$: Calculus of Construction / Higher-order predicate logic
-
-### Syntax
-
-```
-t ::=                       :terms
-      x                     variable
-      \x:t.t                abstraction
-      t t                   application
-      x:t->t                dependent function space
-      *                     type of types
-```
 
 not yet

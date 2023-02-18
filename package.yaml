@@ -31,10 +31,33 @@ dependencies:
   - safe-exceptions
   - text
 
+ghc-options:
+  - -Wall
+  - -Wcompat
+  - -Widentities
+  - -Wincomplete-record-updates
+  - -Wincomplete-uni-patterns
+  - -Wmissing-home-modules
+  - -Wpartial-fields
+  - -Wredundant-constraints
+  - -Wno-name-shadowing
+
 library:
   source-dirs: src
 
 executables:
+<<<<<<< HEAD
+=======
+  untyped:
+    main: Main.hs
+    source-dirs: src/untyped
+    ghc-options:
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+    dependencies:
+      - lambda-calculus
+>>>>>>> master
   typed:
     main: Main.hs
     source-dirs: src/typed
@@ -62,9 +85,15 @@ executables:
       - -with-rtsopts=-N
     dependencies:
       - lambda-calculus
+<<<<<<< HEAD
   recon:
     main: Main.hs
     source-dirs: src/recon
+=======
+  pure:
+    main: Main.hs
+    source-dirs: src/pure
+>>>>>>> master
     ghc-options:
       - -threaded
       - -rtsopts

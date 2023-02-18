@@ -1,8 +1,8 @@
 module Main where
 
-import Typed.Eval (eval, typeof)
-import Typed.Parser (pCommands, prettyError)
-import Typed.Syntax (
+import SystemF.Eval (eval, typeof)
+import SystemF.Parser (pCommands, prettyError)
+import SystemF.Syntax (
         Command (..),
         Context,
         addBinding,
@@ -44,7 +44,7 @@ repl = runInputT defaultSettings (loop emptyContext)
 
 processFile :: String -> IO ()
 processFile n = do
-        let path = "src/typed/examples/" ++ n
+        let path = "src/systemf/examples/" ++ n
         contents <- readFile path
         putStrLn $ "---------- " ++ path ++ " ----------"
         process contents emptyContext
@@ -63,6 +63,6 @@ processCommand ctx (Eval t) = do
                 putStrLn $ "  " ++ printtm ctx t
                 putStr $ "> " ++ printtm ctx t'
                 putStr " : "
-                putStrLn $ printty tyT
+                putStrLn $ printty ctx tyT
         return ctx
 processCommand ctx (Bind x bind) = return $ addBinding x bind ctx
