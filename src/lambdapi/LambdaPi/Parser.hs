@@ -122,7 +122,7 @@ pCommand :: StateT Context Parser Command
 pCommand =
         try
                 ( do
-                        x <- lift pLCID
+                        x <- lift $ lexeme pLCID
                         ctx <- get
                         bind <- lift $ pBinder ctx
                         modify $ \ctx -> addName x ctx
@@ -130,7 +130,7 @@ pCommand =
                 )
                 <|> try
                         ( do
-                                x <- lift pUCID
+                                x <- lift $ lexeme pUCID
                                 ctx <- get
                                 bind <- lift $ pTyBinder ctx
                                 modify $ \ctx -> addName x ctx
@@ -149,13 +149,8 @@ pBinder ctx =
 
 pTyBinder :: Context -> Parser Binding
 pTyBinder ctx =
-        try
-                ( do
-                        _ <- symbol "="
-                        tyT <- pTy ctx
-                        return $ TyAbbBind tyT Nothing
-                )
-                <|> pure (TyVarBind KnStar)
+        TyVarBind <$> (symbol ":" *> pKind ctx)
+                <|> TyAbbBind <$> (symbol "=" *> pTy ctx) <*> pure Nothing
 
 pCommands :: String -> Either (ParseErrorBundle Text Void) [Command]
 pCommands input = parse (evalStateT (pCommand `endBy` lift (symbol ";")) emptyContext <* eof) "" (pack input)

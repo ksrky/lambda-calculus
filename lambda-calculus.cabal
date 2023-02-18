@@ -87,6 +87,28 @@ executable lambdapi
     , text
   default-language: Haskell2010
 
+executable pure
+  main-is: Main.hs
+  other-modules:
+      Pure.Eval
+      Pure.Syntax
+      Paths_lambda_calculus
+  hs-source-dirs:
+      src/pure
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wno-name-shadowing -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , directory
+    , haskeline
+    , hspec
+    , lambda-calculus
+    , megaparsec
+    , mtl
+    , parser-combinators
+    , safe-exceptions
+    , text
+  default-language: Haskell2010
+
 executable systemf
   main-is: Main.hs
   other-modules:
