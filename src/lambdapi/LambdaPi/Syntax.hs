@@ -8,26 +8,26 @@ import Data.List (elemIndex)
 data Term
         = TmVar Int Int
         | TmApp Term Term
-        | TmAbs String Ty Term
+        | TmAbs String Type Term
         deriving (Eq, Show)
 
-data Ty
+data Type
         = TyVar Int Int
-        | TyApp Ty Term
-        | TyPi String Ty Ty
+        | TyApp Type Term
+        | TyPi String Type Type
         deriving (Eq, Show)
 
 data Kind
         = KnStar
-        | KnPi String Ty Kind
+        | KnPi String Type Kind
         deriving (Eq, Show)
 
 data Binding
         = NameBind
-        | VarBind Ty
+        | VarBind Type
         | TyVarBind Kind
-        | TmAbbBind Term (Maybe Ty)
-        | TyAbbBind Ty (Maybe Kind)
+        | TmAbbBind Term (Maybe Type)
+        | TyAbbBind Type (Maybe Kind)
         deriving (Show)
 
 data Command
@@ -68,7 +68,7 @@ bindingShift d bind = case bind of
 getBinding :: Context -> Int -> Binding
 getBinding ctx i = bindingShift (i + 1) (snd $ ctx !! i)
 
-getType :: MonadFail m => Context -> Int -> m Ty
+getType :: MonadFail m => Context -> Int -> m Type
 getType ctx i = case getBinding ctx i of
         VarBind tyT -> return tyT
         TmAbbBind _ (Just tyT) -> return tyT
@@ -89,7 +89,7 @@ getVarIndex var ctx = case elemIndex var (map fst ctx) of
 ----------------------------------------------------------------
 -- Term
 ----------------------------------------------------------------
-tmmap :: (Int -> Int -> Int -> Term) -> (Int -> Ty -> Ty) -> Int -> Term -> Term
+tmmap :: (Int -> Int -> Int -> Term) -> (Int -> Type -> Type) -> Int -> Term -> Term
 tmmap onvar ontype c t = walk c t
     where
         walk c t = case t of
@@ -126,7 +126,7 @@ termSubstTop s t = termShift (-1) (termSubst (termShift 1 s) 0 t)
 ----------------------------------------------------------------
 -- Type
 ----------------------------------------------------------------
-tymap :: (Int -> Int -> Int -> Ty) -> (Int -> Term -> Term) -> Int -> Ty -> Ty
+tymap :: (Int -> Int -> Int -> Type) -> (Int -> Term -> Term) -> Int -> Type -> Type
 tymap onvar onterm c tyT = walk c tyT
     where
         walk c tyT = case tyT of
@@ -134,7 +134,7 @@ tymap onvar onterm c tyT = walk c tyT
                 TyApp tyT1 t2 -> TyApp (walk c tyT1) (onterm c t2)
                 TyPi x tyT1 tyT2 -> TyPi x (walk c tyT1) (walk c tyT2)
 
-typeShiftAbove :: Int -> Int -> Ty -> Ty
+typeShiftAbove :: Int -> Int -> Type -> Type
 typeShiftAbove d =
         tymap
                 ( \c x n ->
@@ -144,16 +144,16 @@ typeShiftAbove d =
                 )
                 (termShiftAbove d)
 
-typeShift :: Int -> Ty -> Ty
+typeShift :: Int -> Type -> Type
 typeShift d = typeShiftAbove d 0
 
-termtySubst :: Term -> Int -> Ty -> Ty
+termtySubst :: Term -> Int -> Type -> Type
 termtySubst s =
         tymap
                 (\_ x n -> TyVar x n)
                 (termSubst s)
 
-termtySubstTop :: Term -> Ty -> Ty
+termtySubstTop :: Term -> Type -> Type
 termtySubstTop s tyT = typeShift (-1) (termtySubst (termShift 1 s) 0 tyT)
 
 ----------------------------------------------------------------
@@ -170,7 +170,7 @@ printtm ctx t = case t of
                 let (x', ctx') = pickFreshname x ctx
                  in "(λ" ++ x' ++ ": " ++ printty ctx tyT1 ++ ". " ++ printtm ctx' t2 ++ ")"
 
-printty :: Context -> Ty -> String
+printty :: Context -> Type -> String
 printty ctx ty = case ty of
         TyVar x n ->
                 if length ctx == n
@@ -187,3 +187,12 @@ printkn ctx knK = case knK of
         KnPi x tyT1 knK2 ->
                 let (x', ctx') = pickFreshname x ctx
                  in "(Π" ++ x' ++ ":" ++ printty ctx tyT1 ++ ". " ++ printkn ctx' knK2 ++ ")"
+
+printbind :: Context -> (String, Binding) -> String
+printbind _ (x, NameBind) = x ++ ": -"
+printbind ctx (x, VarBind tyT) = x ++ ": " ++ printty ctx tyT
+printbind ctx (x, TmAbbBind _ (Just tyT)) = x ++ ": " ++ printty ctx tyT
+printbind _ (x, TmAbbBind _ Nothing) = x ++ ": -"
+printbind ctx (x, TyVarBind knK) = x ++ ": " ++ printkn ctx knK
+printbind ctx (x, TyAbbBind _ (Just knK)) = x ++ ": " ++ printkn ctx knK
+printbind _ (x, TyAbbBind _ Nothing) = x ++ ": -"

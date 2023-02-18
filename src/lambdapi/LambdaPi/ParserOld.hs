@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module LambdaPi.Parser where
+module LambdaPi.ParserOld where
 
 import LambdaPi.Syntax
 
@@ -65,7 +65,7 @@ pTmAbs ctx = do
         t2 <- pTerm ctx'
         return $ TmAbs x tyT1 t2
 
-pTy :: Context -> Parser Ty
+pTy :: Context -> Parser Type
 pTy ctx =
         choice
                 [ try $ pTyApp ctx
@@ -75,19 +75,19 @@ pTy ctx =
                 ]
                 <?> "`Type`"
 
-pTyVar :: Context -> Parser Ty
+pTyVar :: Context -> Parser Type
 pTyVar ctx = do
         tyX <- pLCID
         idx <- getVarIndex tyX ctx
         return $ TyVar idx (length ctx)
 
-pTyApp :: Context -> Parser Ty
+pTyApp :: Context -> Parser Type
 pTyApp ctx = do
         tyT1 <- pTy ctx
         t2 <- pTerm ctx
         return $ TyApp tyT1 t2
 
-pTyPi :: Context -> Parser Ty
+pTyPi :: Context -> Parser Type
 pTyPi ctx = do
         _ <- symbol "Π"
         x <- lexeme pLCID
