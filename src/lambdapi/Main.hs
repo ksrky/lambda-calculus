@@ -1,16 +1,8 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Main where
 
-import LambdaPi.Eval (eval, typeof)
-import LambdaPi.Parser (pCommands, prettyError)
-import LambdaPi.Syntax (
-        Command (..),
-        Context,
-        addBinding,
-        emptyContext,
-        printtm,
-        printty,
- )
-
+import Control.Exception.Safe (SomeException, catch)
 import Control.Monad (foldM)
 import Control.Monad.IO.Class (MonadIO (..))
 import System.Console.Haskeline (
@@ -21,6 +13,18 @@ import System.Console.Haskeline (
         runInputT,
  )
 import System.Environment (getArgs)
+
+import LambdaPi.Eval
+import LambdaPi.Lexer (alexScanTokens)
+import LambdaPi.Parser (parse)
+import LambdaPi.Syntax (
+        Command (..),
+        Context,
+        addBinding,
+        emptyContext,
+        printbind,
+        printtm,
+ )
 
 main :: IO ()
 main = do
@@ -34,35 +38,37 @@ repl = runInputT defaultSettings (loop emptyContext)
     where
         loop :: Context -> InputT IO ()
         loop ctx = do
-                minput <- getInputLine ">> "
-                case minput of
+                minp <- getInputLine ">> "
+                case minp of
                         Nothing -> outputStrLn "Goodbye."
                         Just "" -> outputStrLn "Goodbye."
                         Just inp -> do
-                                ctx' <- liftIO $ process inp ctx
+                                liftIO $ print inp
+                                ctx' <- liftIO $ catch (process inp ctx) (\(e :: SomeException) -> print e >> return ctx)
                                 loop ctx'
 
 processFile :: String -> IO ()
 processFile n = do
         let path = "src/lambdapi/examples/" ++ n
-        contents <- readFile path
+        inp <- readFile path
         putStrLn $ "---------- " ++ path ++ " ----------"
-        _ <- process contents emptyContext
+        _ <- process inp emptyContext
         putStrLn ""
 
 process :: String -> Context -> IO Context
-process inp ctx = case pCommands inp of
-        Left err -> putStrLn (prettyError err) >> return ctx
-        Right cmds -> foldM processCommand ctx cmds
+process inp ctx = do
+        out <- parse (alexScanTokens inp)
+        cmds <- out ctx
+        foldM processCommand ctx cmds
 
 processCommand :: (MonadFail m, MonadIO m) => Context -> Command -> m Context
 processCommand ctx (Eval t) = do
-        tyT <- typeof ctx t
+        _ <- typeof ctx t
         let t' = eval ctx t
-        liftIO $ do
-                putStrLn $ "  " ++ printtm ctx t
-                putStr $ "> " ++ printtm ctx t'
-                putStr " : "
-                putStrLn $ printty ctx tyT
+        liftIO $ putStrLn $ printtm ctx t'
         return ctx
-processCommand ctx (Bind x bind) = return $ addBinding x bind ctx
+processCommand ctx (Bind x bind) = do
+        bind' <- checkBinding ctx bind
+        let bind'' = evalBinding ctx bind'
+        liftIO $ putStrLn $ printbind ctx (x, bind'')
+        return $ addBinding x bind'' ctx

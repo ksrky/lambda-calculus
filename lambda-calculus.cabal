@@ -30,7 +30,8 @@ library
       src
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wno-name-shadowing
   build-depends:
-      base >=4.7 && <5
+      array
+    , base >=4.7 && <5
     , directory
     , haskeline
     , hspec
@@ -52,7 +53,8 @@ executable fomega
       src/fomega
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wno-name-shadowing -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      array
+    , base >=4.7 && <5
     , directory
     , haskeline
     , hspec
@@ -68,34 +70,17 @@ executable lambdapi
   main-is: Main.hs
   other-modules:
       LambdaPi.Eval
+      LambdaPi.Lexer
       LambdaPi.Parser
+      LambdaPi.ParserOld
       LambdaPi.Syntax
       Paths_lambda_calculus
   hs-source-dirs:
       src/lambdapi
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wno-name-shadowing -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
-    , directory
-    , haskeline
-    , hspec
-    , lambda-calculus
-    , megaparsec
-    , mtl
-    , parser-combinators
-    , safe-exceptions
-    , text
-  default-language: Haskell2010
-
-executable pure
-  main-is: Main.hs
-  other-modules:
-      Paths_lambda_calculus
-  hs-source-dirs:
-      src/pure
-  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wno-name-shadowing -threaded -rtsopts -with-rtsopts=-N
-  build-depends:
-      base >=4.7 && <5
+      array
+    , base >=4.7 && <5
     , directory
     , haskeline
     , hspec
@@ -118,7 +103,8 @@ executable systemf
       src/systemf
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wno-name-shadowing -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      array
+    , base >=4.7 && <5
     , directory
     , haskeline
     , hspec
@@ -141,7 +127,8 @@ executable typed
       src/typed
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wno-name-shadowing -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      array
+    , base >=4.7 && <5
     , directory
     , haskeline
     , hspec
@@ -164,7 +151,8 @@ executable untyped
       src/untyped
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wno-name-shadowing -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      array
+    , base >=4.7 && <5
     , directory
     , haskeline
     , hspec

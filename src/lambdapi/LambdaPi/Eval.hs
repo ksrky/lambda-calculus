@@ -1,11 +1,11 @@
 module LambdaPi.Eval where
 
 import LambdaPi.Syntax (
-        Binding (TmAbbBind, TyAbbBind, VarBind),
+        Binding (..),
         Context,
         Kind (..),
         Term (..),
-        Ty (..),
+        Type (..),
         addBinding,
         getBinding,
         getKind,
@@ -44,6 +44,11 @@ eval ctx t = maybe t (eval ctx) (eval' t)
                         Just $ TmApp t1' t2
                 _ -> Nothing
 
+evalBinding :: Context -> Binding -> Binding
+evalBinding ctx bind = case bind of
+        TmAbbBind t tyT -> let t' = eval ctx t in TmAbbBind t' tyT
+        _ -> bind
+
 ----------------------------------------------------------------
 -- Term equivalence
 ----------------------------------------------------------------
@@ -80,6 +85,9 @@ tmeqv ctx s t = do
                 (TmVar i _, TmVar j _) | i == j -> return ()
                 (TmVar i _, _) | istmabb ctx i -> tmeqv ctx (gettmabb ctx i) t
                 (_, TmVar i _) | istmabb ctx i -> tmeqv ctx s (gettmabb ctx i)
+                (TmAbs x tyS1 tmS2, TmAbs y tyT1 tmT2) -> do
+                        let ctx' = addBinding x (VarBind tyS1) ctx
+                         in tmeqv ctx' tmS2 tmT2
                 (TmApp s1 s2, TmApp t1 t2) -> do
                         tmeqv ctx s1 t1
                         tyS1 <- typeof ctx s1
@@ -101,18 +109,18 @@ istyabb ctx i = case getBinding ctx i of
         TyAbbBind{} -> True
         _ -> False
 
-gettyabb :: Context -> Int -> Ty
+gettyabb :: Context -> Int -> Type
 gettyabb ctx i = case getBinding ctx i of
         TyAbbBind tyT _ -> tyT
         _ -> error "unreachable"
 
-computety :: Context -> Ty -> Maybe Ty
+computety :: Context -> Type -> Maybe Type
 computety ctx tyT = case tyT of
         TyApp (TyPi _ _ tyT12) t2 -> Just $ termtySubstTop t2 tyT12
         TyVar i _ | istyabb ctx i -> Just $ gettyabb ctx i
         _ -> Nothing
 
-simplifyty :: Context -> Ty -> Ty
+simplifyty :: Context -> Type -> Type
 simplifyty ctx tyT =
         let tyT' = case tyT of
                 TyApp tyT1 tyT2 -> TyApp (simplifyty ctx tyT1) tyT2
@@ -121,7 +129,7 @@ simplifyty ctx tyT =
                 Just tyT'' -> simplifyty ctx tyT''
                 Nothing -> tyT'
 
-tyeqv :: MonadFail m => Context -> Ty -> Ty -> m ()
+tyeqv :: MonadFail m => Context -> Type -> Type -> m ()
 tyeqv ctx tyS tyT = do
         let tyS' = simplifyty ctx tyS
             tyT' = simplifyty ctx tyT
@@ -162,12 +170,12 @@ kneqv ctx knK1 knK2 = fail $ "kind mismatch: " ++ printkn ctx knK1 ++ ", " ++ pr
 ----------------------------------------------------------------
 -- Typing
 ----------------------------------------------------------------
-checkType :: MonadFail m => Context -> Term -> Ty -> m ()
+checkType :: MonadFail m => Context -> Term -> Type -> m ()
 checkType ctx t tyT = do
         tyT' <- typeof ctx t
         tyeqv ctx tyT tyT'
 
-typeof :: MonadFail m => Context -> Term -> m Ty
+typeof :: MonadFail m => Context -> Term -> m Type
 typeof ctx (TmVar i _) = getType ctx i
 typeof ctx (TmApp t1 t2) = do
         tyT1 <- typeof ctx t1
@@ -176,7 +184,7 @@ typeof ctx (TmApp t1 t2) = do
                 TyPi _ tyS11 tyT12 -> do
                         tyeqv ctx tyS11 tyT2
                         return tyT12
-                _ -> fail ""
+                _ -> fail "Pi type required"
 typeof ctx (TmAbs x tyS1 t2) = do
         checkKnStar ctx tyS1
         let ctx' = addBinding x (VarBind tyS1) ctx
@@ -186,12 +194,12 @@ typeof ctx (TmAbs x tyS1 t2) = do
 ----------------------------------------------------------------
 -- Kinding
 ----------------------------------------------------------------
-checkKnStar :: MonadFail m => Context -> Ty -> m ()
+checkKnStar :: MonadFail m => Context -> Type -> m ()
 checkKnStar ctx tyT = do
         knK <- kindof ctx tyT
         kneqv ctx knK KnStar
 
-kindof :: MonadFail m => Context -> Ty -> m Kind
+kindof :: MonadFail m => Context -> Type -> m Kind
 kindof ctx (TyVar i _) = getKind ctx i
 kindof ctx (TyApp tyS1 t2) = do
         knK1 <- kindof ctx tyS1
@@ -206,3 +214,19 @@ kindof ctx (TyPi x tyT1 tyT2) = do
         let ctx' = addBinding x (VarBind tyT1) ctx
         checkKnStar ctx' tyT2
         return KnStar
+
+checkBinding :: MonadFail m => Context -> Binding -> m Binding
+checkBinding ctx bind = case bind of
+        NameBind -> return NameBind
+        TyVarBind knK -> return $ TyVarBind knK
+        TyAbbBind tyT Nothing -> TyAbbBind tyT . Just <$> kindof ctx tyT
+        TyAbbBind tyT (Just knK) -> do
+                knK' <- kindof ctx tyT
+                kneqv ctx knK knK'
+                return $ TyAbbBind tyT (Just knK)
+        VarBind tyT -> return $ VarBind tyT
+        TmAbbBind t Nothing -> TmAbbBind t . Just <$> typeof ctx t
+        TmAbbBind t (Just tyT) -> do
+                tyT' <- typeof ctx t
+                tyeqv ctx tyT tyT'
+                return $ TmAbbBind t (Just tyT)

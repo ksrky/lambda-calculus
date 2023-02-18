@@ -47,7 +47,7 @@ processFile n = do
         let path = "src/fomega/examples/" ++ n
         contents <- readFile path
         putStrLn $ "---------- " ++ path ++ " ----------"
-        process contents emptyContext
+        _ <- process contents emptyContext
         putStrLn ""
 
 process :: String -> Context -> IO Context

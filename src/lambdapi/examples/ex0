@@ -1,8 +1,13 @@
-id = \a -> \x -> x : forall a: ∗. a -> a;
+Ty : *;
+Tm : Ty -> *;
+base : Ty;
+arrow : Ty -> Ty -> Ty;
+app : Πx:Ty. Πy:Ty. Tm (arrow x y) -> Tm x -> Tm y;
+lam : Πx:Ty. Πy:Ty. (Tm x -> Tm y) -> Tm (arrow x y);
 
-data Nat : * {
-    Zero : Nat;
-    Succ : Nat -> Nat;
-};
+a : Ty;
+idA = lam a a (λx:Tm a. x);
 
-id Nat Zero;
+two = λa:Ty. lam a (arrow (arrow a a) a)
+    (λx:Tm a. lam base base (λf:Tm (arrow a a).
+        app base base f (app base base f x)));
