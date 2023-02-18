@@ -1,8 +1,0 @@
-id = \a -> \x -> x : forall a: ∗. a -> a;
-
-data Nat : * {
-    Zero : Nat;
-    Succ : Nat -> Nat;
-};
-
-id Nat Zero;

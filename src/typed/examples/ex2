@@ -1,2 +1,0 @@
-f:Bool->Bool;
-(\x:Bool.f x) false; 
