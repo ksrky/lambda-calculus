@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.4.
+-- This file has been generated from package.yaml by hpack version 0.35.1.
 --
 -- see: https://github.com/sol/hpack
 
@@ -90,8 +90,6 @@ executable lambdapi
 executable pure
   main-is: Main.hs
   other-modules:
-      Pure.Eval
-      Pure.Syntax
       Paths_lambda_calculus
   hs-source-dirs:
       src/pure
