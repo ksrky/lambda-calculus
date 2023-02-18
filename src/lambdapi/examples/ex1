@@ -1,0 +1,15 @@
+A : *;
+Nat : *;
+zero : Nat;
+succ : Πn:Nat. Nat;
+
+Vector : Πn:Nat. *;
+nil : Vector zero;
+cons : Πn:Nat. Πx:A. Πv:Vector n. Vector (succ n);
+
+one = succ zero;
+two = succ one;
+mkthree = λx:A. λy:A. λz:A. cons two z (cons one y (cons zero x nil));
+
+a: A; b: A;
+mkthree a b;

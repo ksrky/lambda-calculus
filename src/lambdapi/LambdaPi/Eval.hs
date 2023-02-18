@@ -85,6 +85,9 @@ tmeqv ctx s t = do
                 (TmVar i _, TmVar j _) | i == j -> return ()
                 (TmVar i _, _) | istmabb ctx i -> tmeqv ctx (gettmabb ctx i) t
                 (_, TmVar i _) | istmabb ctx i -> tmeqv ctx s (gettmabb ctx i)
+                (TmAbs x tyS1 tmS2, TmAbs y tyT1 tmT2) -> do
+                        let ctx' = addBinding x (VarBind tyS1) ctx
+                         in tmeqv ctx' tmS2 tmT2
                 (TmApp s1 s2, TmApp t1 t2) -> do
                         tmeqv ctx s1 t1
                         tyS1 <- typeof ctx s1
@@ -181,7 +184,7 @@ typeof ctx (TmApp t1 t2) = do
                 TyPi _ tyS11 tyT12 -> do
                         tyeqv ctx tyS11 tyT2
                         return tyT12
-                _ -> fail ""
+                _ -> fail "Pi type required"
 typeof ctx (TmAbs x tyS1 t2) = do
         checkKnStar ctx tyS1
         let ctx' = addBinding x (VarBind tyS1) ctx
