@@ -61,9 +61,9 @@ bindingShift :: Int -> Binding -> Binding
 bindingShift d bind = case bind of
         NameBind -> NameBind
         VarBind tyT -> VarBind (typeShift d tyT)
-        TyVarBind knK -> TyVarBind knK
+        TyVarBind knK -> TyVarBind (kindShift d knK)
         TmAbbBind t tyT_opt -> TmAbbBind (termShift d t) (typeShift d <$> tyT_opt)
-        TyAbbBind tyT opt -> TyAbbBind (typeShift d tyT) opt
+        TyAbbBind tyT knK_opt -> TyAbbBind (typeShift d tyT) (kindShift d <$> knK_opt)
 
 getBinding :: Context -> Int -> Binding
 getBinding ctx i = bindingShift (i + 1) (snd $ ctx !! i)
@@ -155,6 +155,22 @@ termtySubst s =
 
 termtySubstTop :: Term -> Type -> Type
 termtySubstTop s tyT = typeShift (-1) (termtySubst (termShift 1 s) 0 tyT)
+
+----------------------------------------------------------------
+-- Kind
+----------------------------------------------------------------
+knmap :: (Int -> Type -> Type) -> Int -> Kind -> Kind
+knmap ontype c knK = walk c knK
+    where
+        walk c knK = case knK of
+                KnStar -> KnStar
+                KnPi x tyT1 knK2 -> KnPi x (ontype c tyT1) (walk c knK2)
+
+kindShiftAbove :: Int -> Int -> Kind -> Kind
+kindShiftAbove d = knmap (typeShiftAbove d)
+
+kindShift :: Int -> Kind -> Kind
+kindShift d = kindShiftAbove d 0
 
 ----------------------------------------------------------------
 -- Printing

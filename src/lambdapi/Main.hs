@@ -30,30 +30,27 @@ main :: IO ()
 main = do
         args <- getArgs
         case args of
-                [] -> repl
+                [] -> runInputT defaultSettings (repl emptyContext)
                 fnames -> mapM_ processFile fnames
 
-repl :: IO ()
-repl = runInputT defaultSettings (loop emptyContext)
-    where
-        loop :: Context -> InputT IO ()
-        loop ctx = do
-                minp <- getInputLine ">> "
-                case minp of
-                        Nothing -> outputStrLn "Goodbye."
-                        Just "" -> outputStrLn "Goodbye."
-                        Just inp -> do
-                                liftIO $ print inp
-                                ctx' <- liftIO $ catch (process inp ctx) (\(e :: SomeException) -> print e >> return ctx)
-                                loop ctx'
+repl :: Context -> InputT IO ()
+repl ctx = do
+        minp <- getInputLine ">> "
+        case minp of
+                Nothing -> outputStrLn "Goodbye."
+                Just "" -> outputStrLn "Goodbye."
+                Just inp -> do
+                        liftIO $ print inp
+                        ctx' <- liftIO $ catch (process inp ctx) (\(e :: SomeException) -> print e >> return ctx)
+                        repl ctx'
 
 processFile :: String -> IO ()
 processFile n = do
         let path = "src/lambdapi/examples/" ++ n
         inp <- readFile path
         putStrLn $ "---------- " ++ path ++ " ----------"
-        _ <- process inp emptyContext
-        putStrLn ""
+        ctx <- process inp emptyContext
+        runInputT defaultSettings (repl ctx)
 
 process :: String -> Context -> IO Context
 process inp ctx = do

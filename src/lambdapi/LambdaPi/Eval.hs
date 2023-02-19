@@ -1,20 +1,6 @@
 module LambdaPi.Eval where
 
-import LambdaPi.Syntax (
-        Binding (..),
-        Context,
-        Kind (..),
-        Term (..),
-        Type (..),
-        addBinding,
-        getBinding,
-        getKind,
-        getType,
-        printkn,
-        printty,
-        termSubstTop,
-        termtySubstTop,
- )
+import LambdaPi.Syntax
 
 ----------------------------------------------------------------
 -- Evaluation
@@ -50,6 +36,14 @@ evalBinding ctx bind = case bind of
         _ -> bind
 
 ----------------------------------------------------------------
+-- Weak head normal forms
+----------------------------------------------------------------
+whnf :: Term -> Term
+whnf (TmApp (TmAbs _ _ t12) t2) = whnf (termSubstTop t2 t12)
+whnf (TmApp t1 t2) = TmApp (whnf t1) t2
+whnf t = t
+
+----------------------------------------------------------------
 -- Term equivalence
 ----------------------------------------------------------------
 istmabb :: Context -> Int -> Bool
@@ -63,31 +57,23 @@ gettmabb ctx i = case getBinding ctx i of
         _ -> error "unreachable"
 
 computetm :: Context -> Term -> Maybe Term
-computetm ctx tyT = case tyT of
-        TmApp (TmAbs _ _ t12) t2 -> Just $ termSubstTop t2 t12
-        TmVar i _ | istmabb ctx i -> Just $ gettmabb ctx i
-        _ -> Nothing
+computetm ctx (TmVar i _) | istmabb ctx i = computetm ctx (gettmabb ctx i)
+computetm _ _ = Nothing
 
-simplifytm :: Context -> Term -> Term
-simplifytm ctx t =
-        let t' = case t of
-                TmApp t1 t2 -> TmApp (simplifytm ctx t1) t2
-                _ -> t
-         in case computetm ctx t' of
-                Just t'' -> simplifytm ctx t''
-                Nothing -> t'
+whred :: Bool -> Context -> Term -> Term
+whred True ctx t = case computetm ctx t of
+        Just t' -> whred True ctx t'
+        Nothing -> t
+whred False _ t = t
 
 tmeqv :: MonadFail m => Context -> Term -> Term -> m ()
 tmeqv ctx s t = do
-        let s' = simplifytm ctx s
-            t' = simplifytm ctx t
+        let s' = whred True ctx s
+            t' = whred True ctx t
         case (s', t') of
                 (TmVar i _, TmVar j _) | i == j -> return ()
                 (TmVar i _, _) | istmabb ctx i -> tmeqv ctx (gettmabb ctx i) t
                 (_, TmVar i _) | istmabb ctx i -> tmeqv ctx s (gettmabb ctx i)
-                (TmAbs x tyS1 tmS2, TmAbs y tyT1 tmT2) -> do
-                        let ctx' = addBinding x (VarBind tyS1) ctx
-                         in tmeqv ctx' tmS2 tmT2
                 (TmApp s1 s2, TmApp t1 t2) -> do
                         tmeqv ctx s1 t1
                         tyS1 <- typeof ctx s1
@@ -95,11 +81,18 @@ tmeqv ctx s t = do
                         tyS2 <- typeof ctx s2
                         case tyS1 of
                                 TyPi _ tyS11 _ -> tyeqv ctx tyS11 tyS2
-                                _ -> fail ""
-                (TmApp (TmAbs x tyS1 _) _, _) -> do
+                                _ -> fail "Pi type required"
+                (TmAbs x tyS1 tmS2, TmAbs _ _ tmT2) -> do
+                        -- tmp: equality check between tyS1 and tyS2
                         let ctx' = addBinding x (VarBind tyS1) ctx
-                        checkType ctx' s tyS1
-                _ -> fail ""
+                         in tmeqv ctx' (whnf tmS2) (whnf tmT2)
+                (_, TmAbs x tyT2 t2) -> do
+                        let ctx' = addBinding x (VarBind tyT2) ctx
+                        tmeqv ctx' (whnf (TmApp s' (TmVar 0 (length ctx')))) (whnf t2)
+                (TmAbs x tyS2 s2, _) -> do
+                        let ctx' = addBinding x (VarBind tyS2) ctx
+                        tmeqv ctx' (whnf s2) (whnf (TmApp t' (TmVar 0 (length ctx'))))
+                _ -> fail $ "term mismatch: " ++ printtm ctx s ++ ", " ++ printtm ctx t
 
 ----------------------------------------------------------------
 -- Type equivalence
@@ -143,16 +136,14 @@ tyeqv ctx tyS tyT = do
                         tyT2 <- typeof ctx t2
                         case knK1 of
                                 KnPi _ tyT11 _ -> tyeqv ctx tyT11 tyT2
-                                _ -> fail ""
+                                _ -> fail "Pi kind required"
                         tmeqv ctx t1 t2
-                (TyPi x tyS1 tyS2, TyPi y tyT1 tyT2) | x == y -> do
+                (TyPi x tyS1 tyS2, TyPi _ tyT1 tyT2) -> do
                         tyeqv ctx tyS1 tyT1
-                        knK1 <- kindof ctx tyT1
-                        kneqv ctx knK1 KnStar
+                        checkKnStar ctx tyT1
                         let ctx' = addBinding x (VarBind tyS1) ctx
                         tyeqv ctx' tyS2 tyT2
-                        knK2 <- kindof ctx' tyT2
-                        kneqv ctx' knK2 KnStar
+                        checkKnStar ctx' tyT2
                 _ -> fail $ "type mismatch: " ++ printty ctx tyS ++ ", " ++ printty ctx tyT
 
 ----------------------------------------------------------------
@@ -183,7 +174,7 @@ typeof ctx (TmApp t1 t2) = do
         case tyT1 of
                 TyPi _ tyS11 tyT12 -> do
                         tyeqv ctx tyS11 tyT2
-                        return tyT12
+                        return $ termtySubstTop t2 tyT12
                 _ -> fail "Pi type required"
 typeof ctx (TmAbs x tyS1 t2) = do
         checkKnStar ctx tyS1

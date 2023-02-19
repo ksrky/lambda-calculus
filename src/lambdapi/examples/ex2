@@ -1,0 +1,10 @@
+A : *;
+Nat : *;
+zero : Nat;
+succ : Πn:Nat. Nat;
+
+Vector : Πn:Nat. *;
+nil : Vector zero;
+cons : Πn:Nat. Πx:A. Πv:Vector n. Vector (succ n);
+
+singleton = λx:A. cons zero x nil;
