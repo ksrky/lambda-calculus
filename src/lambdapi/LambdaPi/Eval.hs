@@ -116,7 +116,7 @@ computety ctx tyT = case tyT of
 simplifyty :: Context -> Type -> Type
 simplifyty ctx tyT =
         let tyT' = case tyT of
-                TyApp tyT1 tyT2 -> TyApp (simplifyty ctx tyT1) tyT2
+                TyApp tyT1 t2 -> TyApp (simplifyty ctx tyT1) t2
                 _ -> tyT
          in case computety ctx tyT of
                 Just tyT'' -> simplifyty ctx tyT''
@@ -171,7 +171,7 @@ typeof ctx (TmVar i _) = getType ctx i
 typeof ctx (TmApp t1 t2) = do
         tyT1 <- typeof ctx t1
         tyT2 <- typeof ctx t2
-        case tyT1 of
+        case simplifyty ctx tyT1 of
                 TyPi _ tyS11 tyT12 -> do
                         tyeqv ctx tyS11 tyT2
                         return $ termtySubstTop t2 tyT12
@@ -198,8 +198,8 @@ kindof ctx (TyApp tyS1 t2) = do
         case knK1 of
                 KnPi _ tyT11 knK12 -> do
                         tyeqv ctx tyT11 tyT2
-                        return knK12
-                _ -> fail ""
+                        return $ termknSubstTop t2 knK12
+                _ -> fail "Pi kind required"
 kindof ctx (TyPi x tyT1 tyT2) = do
         checkKnStar ctx tyT1
         let ctx' = addBinding x (VarBind tyT1) ctx

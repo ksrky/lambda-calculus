@@ -40,7 +40,6 @@ repl ctx = do
                 Nothing -> outputStrLn "Goodbye."
                 Just "" -> outputStrLn "Goodbye."
                 Just inp -> do
-                        liftIO $ print inp
                         ctx' <- liftIO $ catch (process inp ctx) (\(e :: SomeException) -> print e >> return ctx)
                         repl ctx'
 

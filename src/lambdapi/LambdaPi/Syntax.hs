@@ -132,7 +132,7 @@ tymap onvar onterm c tyT = walk c tyT
         walk c tyT = case tyT of
                 TyVar x n -> onvar c x n
                 TyApp tyT1 t2 -> TyApp (walk c tyT1) (onterm c t2)
-                TyPi x tyT1 tyT2 -> TyPi x (walk c tyT1) (walk c tyT2)
+                TyPi x tyT1 tyT2 -> TyPi x (walk c tyT1) (walk (c + 1) tyT2)
 
 typeShiftAbove :: Int -> Int -> Type -> Type
 typeShiftAbove d =
@@ -164,13 +164,19 @@ knmap ontype c knK = walk c knK
     where
         walk c knK = case knK of
                 KnStar -> KnStar
-                KnPi x tyT1 knK2 -> KnPi x (ontype c tyT1) (walk c knK2)
+                KnPi x tyT1 knK2 -> KnPi x (ontype c tyT1) (walk (c + 1) knK2)
 
 kindShiftAbove :: Int -> Int -> Kind -> Kind
 kindShiftAbove d = knmap (typeShiftAbove d)
 
 kindShift :: Int -> Kind -> Kind
 kindShift d = kindShiftAbove d 0
+
+termknSubst :: Term -> Int -> Kind -> Kind
+termknSubst s = knmap (termtySubst s)
+
+termknSubstTop :: Term -> Kind -> Kind
+termknSubstTop s knK = kindShift (-1) (termknSubst (termShift 1 s) 0 knK)
 
 ----------------------------------------------------------------
 -- Printing
@@ -208,7 +214,7 @@ printbind :: Context -> (String, Binding) -> String
 printbind _ (x, NameBind) = x ++ ": -"
 printbind ctx (x, VarBind tyT) = x ++ ": " ++ printty ctx tyT
 printbind ctx (x, TmAbbBind _ (Just tyT)) = x ++ ": " ++ printty ctx tyT
-printbind _ (x, TmAbbBind _ Nothing) = x ++ ": -"
+printbind ctx (x, TmAbbBind t Nothing) = x ++ " = " ++ printtm ctx t
 printbind ctx (x, TyVarBind knK) = x ++ ": " ++ printkn ctx knK
 printbind ctx (x, TyAbbBind _ (Just knK)) = x ++ ": " ++ printkn ctx knK
-printbind _ (x, TyAbbBind _ Nothing) = x ++ ": -"
+printbind ctx (x, TyAbbBind tyT Nothing) = x ++ " = " ++ printty ctx tyT
