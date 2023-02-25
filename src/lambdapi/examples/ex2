@@ -1,1 +1,9 @@
-eq : forall a. Πx:a -> a ->  
+Nat : *;
+zero : Nat;
+succ : Πn:Nat. Nat;
+
+Eq : Πx:Nat. Πy:Nat. *;
+eq : Πx:Nat. Πy:Nat. Eq x y;
+
+zero_equals_to_zero = eq zero zero
+

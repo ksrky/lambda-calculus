@@ -32,7 +32,7 @@ eval ctx t = maybe t (eval ctx) (eval' t)
 
 evalBinding :: Context -> Binding -> Binding
 evalBinding ctx bind = case bind of
-        TmAbbBind t tyT -> let t' = eval ctx t in TmAbbBind t' tyT
+        TmAbbBind t tyT -> TmAbbBind (eval ctx t) tyT
         _ -> bind
 
 ----------------------------------------------------------------
@@ -73,7 +73,7 @@ tmeqv ctx s t = do
         case (s', t') of
                 (TmVar i _, TmVar j _) | i == j -> return ()
                 (TmVar i _, _) | istmabb ctx i -> tmeqv ctx (gettmabb ctx i) t
-                (_, TmVar i _) | istmabb ctx i -> tmeqv ctx s (gettmabb ctx i)
+                (_, TmVar j _) | istmabb ctx j -> tmeqv ctx s (gettmabb ctx j)
                 (TmApp s1 s2, TmApp t1 t2) -> do
                         tmeqv ctx s1 t1
                         tyS1 <- typeof ctx s1
@@ -82,17 +82,17 @@ tmeqv ctx s t = do
                         case tyS1 of
                                 TyPi _ tyS11 _ -> tyeqv ctx tyS11 tyS2
                                 _ -> fail "Pi type required"
-                (TmAbs x tyS1 tmS2, TmAbs _ _ tmT2) -> do
+                (TmAbs x tyS1 s2, TmAbs _ _ t2) -> do
                         -- tmp: equality check between tyS1 and tyS2
                         let ctx' = addBinding x (VarBind tyS1) ctx
-                         in tmeqv ctx' (whnf tmS2) (whnf tmT2)
+                         in tmeqv ctx' (whnf s2) (whnf t2)
                 (_, TmAbs x tyT2 t2) -> do
                         let ctx' = addBinding x (VarBind tyT2) ctx
                         tmeqv ctx' (whnf (TmApp s' (TmVar 0 (length ctx')))) (whnf t2)
                 (TmAbs x tyS2 s2, _) -> do
                         let ctx' = addBinding x (VarBind tyS2) ctx
                         tmeqv ctx' (whnf s2) (whnf (TmApp t' (TmVar 0 (length ctx'))))
-                _ -> fail $ "term mismatch: " ++ printtm ctx s ++ ", " ++ printtm ctx t
+                _ -> fail $ "term mismatch: " ++ printtm ctx s ++ ", " ++ printtm ctx t ++ show s ++ show t ++ show ctx
 
 ----------------------------------------------------------------
 -- Type equivalence
@@ -118,7 +118,7 @@ simplifyty ctx tyT =
         let tyT' = case tyT of
                 TyApp tyT1 t2 -> TyApp (simplifyty ctx tyT1) t2
                 _ -> tyT
-         in case computety ctx tyT of
+         in case computety ctx tyT' of
                 Just tyT'' -> simplifyty ctx tyT''
                 Nothing -> tyT'
 

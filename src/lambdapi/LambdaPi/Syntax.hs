@@ -95,7 +95,7 @@ tmmap onvar ontype c t = walk c t
         walk c t = case t of
                 TmVar x n -> onvar c x n
                 TmApp t1 t2 -> TmApp (walk c t1) (walk c t2)
-                TmAbs x t1 t2 -> TmAbs x (ontype c t1) (walk (c + 1) t2)
+                TmAbs x tyT1 t2 -> TmAbs x (ontype c tyT1) (walk (c + 1) t2)
 
 termShiftAbove :: Int -> Int -> Term -> Term
 termShiftAbove d =
@@ -118,7 +118,7 @@ termSubst s =
                                 then termShift j s
                                 else TmVar x n
                 )
-                (\_ tyT -> tyT)
+                (termtySubst s)
 
 termSubstTop :: Term -> Term -> Term
 termSubstTop s t = termShift (-1) (termSubst (termShift 1 s) 0 t)
